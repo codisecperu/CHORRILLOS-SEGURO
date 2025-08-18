@@ -5,6 +5,8 @@ import Footer from './components/layout/Footer';
 import Home from './components/pages/Home';
 import EmpadronamientoCamaras from './components/pages/EmpadronamientoCamaras';
 import EmpadronamientoVigilantes from './components/pages/EmpadronamientoVigilantes';
+import ListCamaras from './components/pages/ListCamaras';
+import ListVigilantes from './components/pages/ListVigilantes';
 import MapaInteractivo from './components/pages/MapaInteractivo';
 import CentroAyuda from './components/pages/CentroAyuda';
 import PanelAdmin from './components/pages/PanelAdmin';
@@ -23,6 +25,8 @@ function App() {
             <Route path="/mapa" element={<MapaInteractivo />} />
             <Route path="/centro-ayuda" element={<CentroAyuda />} />
             <Route path="/admin" element={<PanelAdmin />} />
+            <Route path="/admin/camaras" element={<ListCamaras />} />
+            <Route path="/admin/vigilantes" element={<ListVigilantes />} />
           </Routes>
         </main>
         <Footer />

@@ -1,0 +1,18 @@
+1. Creación del archivo de avances.
+2. Revisión del formulario de empadronamiento de cámaras.
+3. Mejora de los tipos de entrada para número de documento y teléfono en el formulario de cámaras.
+4. Validación de latitud y longitud en el formulario de cámaras.
+5. Visualización de errores para latitud y longitud en el formulario de cámaras.
+6. Mostrar nombre del archivo de imagen seleccionado en el formulario de cámaras.
+7. Revisión del formulario de empadronamiento de vigilantes.
+8. Mejora de los tipos de entrada para número de documento y teléfono en el formulario de vigilantes.
+9. Validación de latitud y longitud en el formulario de vigilantes.
+10. Visualización de errores para latitud y longitud en el formulario de vigilantes.
+11. Mostrar nombre del archivo de foto y documentos seleccionados en el formulario de vigilantes.
+12. Creación de `backend/db.js` para la conexión a PostgreSQL.
+13. Actualización de `backend/package.json` con scripts `start` y `migrate`.
+14. Creación de `backend/migrations/run-migrations.js` para la creación de tablas `cameras` y `vigilantes`.
+15. Implementación de rutas API para el registro de cámaras y vigilantes en `backend/index.js`.
+16. Modificación del formulario de cámaras (`EmpadronamientoCamaras.js`) para enviar datos al backend.
+17. Modificación del formulario de vigilantes (`EmpadronamientoVigilantes.js`) para enviar datos al backend.
+18. Configuración de `multer` para servir archivos estáticos en el backend.

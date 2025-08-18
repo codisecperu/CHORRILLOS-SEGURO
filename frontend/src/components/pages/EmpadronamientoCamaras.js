@@ -73,6 +73,12 @@ const EmpadronamientoCamaras = () => {
     if (currentStep === 3) {
       if (!formData.direccion.trim()) newErrors.direccion = 'La dirección es obligatoria';
       if (!formData.sector.trim()) newErrors.sector = 'Seleccione el sector';
+      if (formData.coordenadas.lat && isNaN(Number(formData.coordenadas.lat))) {
+        newErrors.lat = 'La latitud debe ser un número válido';
+      }
+      if (formData.coordenadas.lng && isNaN(Number(formData.coordenadas.lng))) {
+        newErrors.lng = 'La longitud debe ser un número válido';
+      }
     }
     
     setErrors(newErrors);
@@ -96,18 +102,35 @@ const EmpadronamientoCamaras = () => {
     setIsSubmitting(true);
     
     try {
-      // Aquí iría la lógica para enviar al backend
-      console.log('Datos del formulario:', formData);
-      
-      // Simular envío
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mostrar confirmación
+      const data = new FormData();
+      for (const key in formData) {
+        if (key === 'coordenadas') {
+          data.append('lat', formData.coordenadas.lat);
+          data.append('lng', formData.coordenadas.lng);
+        } else if (key === 'imagenReferencial' && formData.imagenReferencial) {
+          data.append(key, formData.imagenReferencial);
+        } else {
+          data.append(key, formData[key]);
+        }
+      }
+
+      const response = await fetch('http://localhost:5000/api/cameras/register', {
+        method: 'POST',
+        body: data,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al registrar la cámara');
+      }
+
+      const result = await response.json();
+      console.log('Registro exitoso:', result);
       alert('¡Registro exitoso! Su cámara ha sido empadronada.');
       
     } catch (error) {
       console.error('Error al enviar:', error);
-      alert('Error al enviar el formulario. Intente nuevamente.');
+      alert(`Error al enviar el formulario: ${error.message}. Intente nuevamente.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +176,7 @@ const EmpadronamientoCamaras = () => {
         <div>
           <label className="form-label">Número de Documento *</label>
           <input
-            type="text"
+            type="number"
             name="numeroDocumento"
             value={formData.numeroDocumento}
             onChange={handleInputChange}
@@ -177,6 +200,7 @@ const EmpadronamientoCamaras = () => {
             onChange={handleInputChange}
             className={`form-input ${errors.telefono ? 'border-red-500' : ''}`}
             placeholder="Ingrese su teléfono"
+            pattern="[0-9]{9}" // Assuming 9-digit phone number for Peru
           />
           {errors.telefono && (
             <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>
@@ -365,9 +389,12 @@ const EmpadronamientoCamaras = () => {
               ...prev,
               coordenadas: { ...prev.coordenadas, lat: e.target.value }
             }))}
-            className="form-input"
+            className={`form-input ${errors.lat ? 'border-red-500' : ''}`}
             placeholder="Ej: -12.3456"
           />
+          {errors.lat && (
+            <p className="text-red-500 text-sm mt-1">{errors.lat}</p>
+          )}
         </div>
 
         <div>
@@ -380,9 +407,12 @@ const EmpadronamientoCamaras = () => {
               ...prev,
               coordenadas: { ...prev.coordenadas, lng: e.target.value }
             }))}
-            className="form-input"
+            className={`form-input ${errors.lng ? 'border-red-500' : ''}`}
             placeholder="Ej: -76.7890"
           />
+          {errors.lng && (
+            <p className="text-red-500 text-sm mt-1">{errors.lng}</p>
+          )}
         </div>
 
         <div className="md:col-span-2">
@@ -393,6 +423,11 @@ const EmpadronamientoCamaras = () => {
             onChange={handleFileChange}
             className="form-input"
           />
+          {formData.imagenReferencial && (
+            <p className="text-sm text-gray-700 mt-1">
+              Archivo seleccionado: {formData.imagenReferencial.name}
+            </p>
+          )}
           <p className="text-sm text-gray-500 mt-1">
             Suba una imagen que muestre la ubicación o vista de la cámara (opcional)
           </p>

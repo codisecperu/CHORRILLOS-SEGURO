@@ -81,6 +81,12 @@ const EmpadronamientoVigilantes = () => {
     if (currentStep === 3) {
       if (!formData.direccion.trim()) newErrors.direccion = 'La dirección es obligatoria';
       if (!formData.sector.trim()) newErrors.sector = 'Seleccione el sector';
+      if (formData.coordenadas.lat && isNaN(Number(formData.coordenadas.lat))) {
+        newErrors.lat = 'La latitud debe ser un número válido';
+      }
+      if (formData.coordenadas.lng && isNaN(Number(formData.coordenadas.lng))) {
+        newErrors.lng = 'La longitud debe ser un número válido';
+      }
     }
     
     setErrors(newErrors);
@@ -104,12 +110,39 @@ const EmpadronamientoVigilantes = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Datos del formulario:', formData);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const data = new FormData();
+      for (const key in formData) {
+        if (key === 'coordenadas') {
+          data.append('lat', formData.coordenadas.lat);
+          data.append('lng', formData.coordenadas.lng);
+        } else if (key === 'foto' && formData.foto) {
+          data.append(key, formData.foto);
+        } else if (key === 'documentos' && formData.documentos.length > 0) {
+          formData.documentos.forEach((file, index) => {
+            data.append(`documentos[${index}]`, file);
+          });
+        } else {
+          data.append(key, formData[key]);
+        }
+      }
+
+      const response = await fetch('http://localhost:5000/api/vigilantes/register', {
+        method: 'POST',
+        body: data,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al registrar el vigilante');
+      }
+
+      const result = await response.json();
+      console.log('Registro exitoso:', result);
       alert('¡Registro exitoso! Su perfil de vigilante ha sido empadronado.');
+      
     } catch (error) {
       console.error('Error al enviar:', error);
-      alert('Error al enviar el formulario. Intente nuevamente.');
+      alert(`Error al enviar el formulario: ${error.message}. Intente nuevamente.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -170,7 +203,7 @@ const EmpadronamientoVigilantes = () => {
         <div>
           <label className="form-label">Número de Documento *</label>
           <input
-            type="text"
+            type="number"
             name="numeroDocumento"
             value={formData.numeroDocumento}
             onChange={handleInputChange}
@@ -208,6 +241,7 @@ const EmpadronamientoVigilantes = () => {
             onChange={handleInputChange}
             className={`form-input ${errors.telefono ? 'border-red-500' : ''}`}
             placeholder="Ingrese su teléfono"
+            pattern="[0-9]{9}" // Assuming 9-digit phone number for Peru
           />
           {errors.telefono && (
             <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>
@@ -400,9 +434,12 @@ const EmpadronamientoVigilantes = () => {
               ...prev,
               coordenadas: { ...prev.coordenadas, lat: e.target.value }
             }))}
-            className="form-input"
+            className={`form-input ${errors.lat ? 'border-red-500' : ''}`}
             placeholder="Ej: -12.3456"
           />
+          {errors.lat && (
+            <p className="text-red-500 text-sm mt-1">{errors.lat}</p>
+          )}
         </div>
 
         <div>
@@ -415,9 +452,12 @@ const EmpadronamientoVigilantes = () => {
               ...prev,
               coordenadas: { ...prev.coordenadas, lng: e.target.value }
             }))}
-            className="form-input"
+            className={`form-input ${errors.lng ? 'border-red-500' : ''}`}
             placeholder="Ej: -76.7890"
           />
+          {errors.lng && (
+            <p className="text-red-500 text-sm mt-1">{errors.lng}</p>
+          )}
         </div>
 
         <div>
@@ -428,6 +468,11 @@ const EmpadronamientoVigilantes = () => {
             onChange={(e) => handleFileChange(e, 'foto')}
             className="form-input"
           />
+          {formData.foto && (
+            <p className="text-sm text-gray-700 mt-1">
+              Archivo seleccionado: {formData.foto.name}
+            </p>
+          )}
           <p className="text-sm text-gray-500 mt-1">
             Foto tipo carnet para su credencial de vigilante
           </p>
@@ -442,6 +487,11 @@ const EmpadronamientoVigilantes = () => {
             onChange={(e) => handleFileChange(e, 'documentos')}
             className="form-input"
           />
+          {formData.documentos.length > 0 && (
+            <p className="text-sm text-gray-700 mt-1">
+              Archivos seleccionados: {formData.documentos.map(doc => doc.name).join(', ')}
+            </p>
+          )}
           <p className="text-sm text-gray-500 mt-1">
             Certificados, constancias o documentos que respalden su experiencia
           </p>

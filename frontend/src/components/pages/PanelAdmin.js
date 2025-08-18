@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ChartBarIcon, 
   UsersIcon, 
@@ -23,21 +24,23 @@ const PanelAdmin = () => {
     fechaHasta: ''
   });
 
-  // Datos de ejemplo para el dashboard
-  const estadisticas = {
-    totalCamaras: 156,
-    totalVigilantes: 89,
-    camarasActivas: 142,
-    camarasPendientes: 14,
-    incidenciasMes: 23,
-    coberturaSectores: {
-      centro: 45,
-      playa: 32,
-      morro: 28,
-      pampilla: 25,
-      villa: 16
-    }
-  };
+  const [estadisticas, setEstadisticas] = useState({
+    totalCamaras: 0,
+    totalVigilantes: 0,
+    camarasActivas: 0,
+    camarasPendientes: 0,
+    incidenciasMes: 0,
+    coberturaSectores: {}
+  });
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/stats')
+      .then(r => r.json())
+      .then(data => setEstadisticas(prev => ({ ...prev, totalCamaras: data.cameras, totalVigilantes: data.vigilantes })))
+      .catch(err => console.error('Error fetching stats', err));
+  }, []);
 
   const registrosPendientes = [
     {
@@ -104,6 +107,9 @@ const PanelAdmin = () => {
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-1">{estadisticas.totalCamaras}</h3>
           <p className="text-gray-600">Total de Cámaras</p>
+          <div className="mt-3">
+            <button onClick={() => navigate('/admin/camaras')} className="btn-primary text-sm">Ver Cámaras</button>
+          </div>
         </div>
 
         <div className="card text-center">
@@ -114,6 +120,9 @@ const PanelAdmin = () => {
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-1">{estadisticas.totalVigilantes}</h3>
           <p className="text-gray-600">Total de Vigilantes</p>
+          <div className="mt-3">
+            <button onClick={() => navigate('/admin/vigilantes')} className="btn-primary text-sm">Ver Vigilantes</button>
+          </div>
         </div>
 
         <div className="card text-center">
