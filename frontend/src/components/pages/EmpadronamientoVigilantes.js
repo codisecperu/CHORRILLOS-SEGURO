@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheckIcon, MapPinIcon, UserIcon, DevicePhoneMobileIcon, ClockIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, MapPinIcon, UserIcon, DevicePhoneMobileIcon, ClockIcon, AcademicCapIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { extractCoordinatesFromGoogleMaps, isValidGoogleMapsUrl, getAddressFromCoordinates } from '../../utils/coordinateExtractor';
 
 const EmpadronamientoVigilantes = () => {
   const [formData, setFormData] = useState({
@@ -36,6 +37,8 @@ const EmpadronamientoVigilantes = () => {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [isExtractingCoordinates, setIsExtractingCoordinates] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,6 +62,64 @@ const EmpadronamientoVigilantes = () => {
     } else if (field === 'documentos') {
       setFormData(prev => ({ ...prev, documentos: files }));
     }
+  };
+
+  // Función para extraer coordenadas desde Google Maps
+  const handleExtractCoordinates = async () => {
+    if (!googleMapsUrl.trim()) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'Ingrese un enlace de Google Maps' }));
+      return;
+    }
+
+    if (!isValidGoogleMapsUrl(googleMapsUrl)) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'El enlace no es válido de Google Maps' }));
+      return;
+    }
+
+    setIsExtractingCoordinates(true);
+    setErrors(prev => ({ ...prev, googleMapsUrl: '' }));
+
+    try {
+      const coordinates = await extractCoordinatesFromGoogleMaps(googleMapsUrl);
+      
+      if (coordinates) {
+        setFormData(prev => ({
+          ...prev,
+          coordenadas: coordinates
+        }));
+
+        // Obtener dirección automáticamente
+        const address = await getAddressFromCoordinates(coordinates.lat, coordinates.lng);
+        if (address && address !== 'Error al obtener dirección' && address !== 'Dirección no encontrada') {
+          setFormData(prev => ({
+            ...prev,
+            direccion: address
+          }));
+        }
+
+        // Limpiar el enlace después de extraer
+        setGoogleMapsUrl('');
+      } else {
+        setErrors(prev => ({ ...prev, googleMapsUrl: 'No se pudieron extraer coordenadas del enlace' }));
+        // Ensure coordinates are reset to a valid state object
+        setFormData(prev => ({
+          ...prev,
+          coordenadas: { lat: '', lng: '' }
+        }));
+      }
+    } catch (error) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'Error al procesar el enlace' }));
+    } finally {
+      setIsExtractingCoordinates(false);
+    }
+  };
+
+  // Función para limpiar coordenadas
+  const handleClearCoordinates = () => {
+    setFormData(prev => ({
+      ...prev,
+      coordenadas: { lat: '', lng: '' }
+    }));
   };
 
   const validateStep = (currentStep) => {
@@ -423,6 +484,75 @@ const EmpadronamientoVigilantes = () => {
             <p className="text-red-500 text-sm mt-1">{errors.sector}</p>
           )}
         </div>
+
+        {/* Campo para enlace de Google Maps */}
+        <div className="md:col-span-2">
+          <label className="form-label flex items-center">
+            <LinkIcon className="h-4 w-4 inline mr-2" />
+            Enlace de Google Maps (Opcional)
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="url"
+              value={googleMapsUrl}
+              onChange={(e) => setGoogleMapsUrl(e.target.value)}
+              className={`form-input flex-1 ${errors.googleMapsUrl ? 'border-red-500' : ''}`}
+              placeholder="https://maps.google.com/... o https://maps.app.goo.gl/..."
+            />
+            <button
+              type="button"
+              onClick={handleExtractCoordinates}
+              disabled={isExtractingCoordinates || !googleMapsUrl.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            >
+              {isExtractingCoordinates ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Extrayendo...</span>
+                </>
+              ) : (
+                <>
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span>Extraer</span>
+                </>
+              )}
+            </button>
+          </div>
+          {errors.googleMapsUrl && (
+            <p className="text-red-500 text-sm mt-1">{errors.googleMapsUrl}</p>
+          )}
+          <p className="text-sm text-gray-500 mt-1">
+            Pegue un enlace de Google Maps para extraer automáticamente las coordenadas y dirección
+          </p>
+        </div>
+
+        {/* Coordenadas extraídas */}
+        {(formData.coordenadas.lat || formData.coordenadas.lng) && (
+          <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-green-800 mb-2">Coordenadas Extraídas</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-green-600">Latitud:</span>
+                    <p className="text-sm font-medium text-green-900">{formData.coordenadas.lat}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-green-600">Longitud:</span>
+                    <p className="text-sm font-medium text-green-900">{formData.coordenadas.lng}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearCoordinates}
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="form-label">Latitud</label>

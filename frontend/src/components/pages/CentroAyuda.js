@@ -102,11 +102,11 @@ const CentroAyuda = () => {
     setFaqAbierta(faqAbierta === index ? null : index);
   };
 
-  const categorias = [
-    { id: 'general', nombre: 'General', icono: QuestionMarkCircleIcon },
-    { id: 'camaras', nombre: 'Cámaras', icono: DocumentTextIcon },
-    { id: 'vigilantes', nombre: 'Vigilantes', icono: ChatBubbleLeftRightIcon },
-    { id: 'tecnicos', nombre: 'Técnicos', icono: GlobeAltIcon }
+    const categorias = [
+    { id: 'general', nombre: 'General', Icon: QuestionMarkCircleIcon },
+    { id: 'camaras', nombre: 'Cámaras', Icon: DocumentTextIcon },
+    { id: 'vigilantes', nombre: 'Vigilantes', Icon: ChatBubbleLeftRightIcon },
+    { id: 'tecnicos', nombre: 'Técnicos', Icon: GlobeAltIcon }
   ];
 
   return (
@@ -147,7 +147,7 @@ const CentroAyuda = () => {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    <categoria.icon className="h-4 w-4 inline mr-2" />
+                    <categoria.Icon className="h-4 w-4 inline mr-2" />
                     {categoria.nombre}
                   </button>
                 ))}

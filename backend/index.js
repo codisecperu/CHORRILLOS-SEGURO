@@ -1,45 +1,45 @@
 
 
-// Diagnostic: log DEBUG-like env vars (if any) before modification
+// --- Start of Aggressive Environment Variable Sanitization ---
+// This block is designed to prevent a specific crash in the `path-to-regexp` package,
+// a dependency of Express, which can be caused by environment variables containing URLs.
 try {
-  const debugVars = Object.keys(process.env).filter(k => k.toUpperCase().startsWith('DEBUG') || k.toUpperCase().includes('DEBUG'));
-  if (debugVars.length > 0) {
-    console.log('DEBUG env vars present at start:', debugVars.reduce((acc, k) => { acc[k] = process.env[k]; return acc; }, {}));
-  }
-} catch (e) {}
+  const suspiciousPatterns = [/http:\/\//i, /https:\/\//i, /git\.new/i, /pathToRegexp/i];
+  let sanitizedCount = 0;
 
-// Aggressively remove any env var whose value looks like the pathToRegexp error URL
-try {
-  Object.keys(process.env).forEach(k => {
-    const v = (process.env[k] || '').toString();
-    if (!v) return;
-    const suspicious = ['pathToRegexpError', 'pathToRegexp', 'git.new', '://'];
-    for (const s of suspicious) {
-      if (v.includes(s)) {
-        try { delete process.env[k]; } catch (e) { process.env[k] = ''; }
-        break;
+  for (const key in process.env) {
+    const value = process.env[key] || '';
+    
+    // Check if the key or value is suspicious
+    const keyIsSuspicious = key.toUpperCase().includes('DEBUG');
+    const valueIsSuspicious = suspiciousPatterns.some(pattern => pattern.test(value));
+
+    if (keyIsSuspicious || valueIsSuspicious) {
+      try {
+        delete process.env[key];
+        sanitizedCount++;
+      } catch (e) {
+        // Fallback for read-only properties
+        process.env[key] = '';
       }
     }
-  });
-} catch (e) {}
-require('dotenv').config();
-// Defensive: unset DEBUG-like env vars that may contain URLs and break path-to-regexp
-try {
-  Object.keys(process.env).forEach((k) => {
-    if (k.startsWith('DEBUG')) {
-      const v = process.env[k] || '';
-      if (v.includes('pathToRegexpError') || v.startsWith('http') || v.includes('://')) {
-        delete process.env[k];
-      }
-    }
-  });
+  }
+
+  if (sanitizedCount > 0) {
+    console.log(`[Sanitizer] Removed ${sanitizedCount} potentially problematic environment variable(s).`);
+  }
 } catch (e) {
-  // ignore
+  console.error('[Sanitizer] Error during environment variable sanitization:', e);
 }
+// --- End of Aggressive Environment Variable Sanitization ---
+
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const { URL } = require('url');
 const db = require('./db');
 const multer = require('multer');
 const validators = require('./validators');
@@ -67,6 +67,40 @@ app.use('/uploads', express.static('uploads')); // Serve uploaded files
 // Basic Route
 app.get('/api', (req, res) => {
   res.send('Backend de Chorrillos Seguro funcionando!');
+});
+
+// Route to resolve shortened URLs
+app.get('/api/resolve-url', (req, res) => {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+
+  const urlObject = new URL(url);
+
+  const options = {
+    method: 'HEAD',
+    host: urlObject.hostname,
+    path: urlObject.pathname,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+    }
+  };
+
+  const request = https.request(options, (response) => {
+    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+      res.json({ resolvedUrl: response.headers.location });
+    } else {
+      res.json({ resolvedUrl: url }); // Return original url if not a redirect
+    }
+  });
+
+  request.on('error', (e) => {
+    console.error(`problem with request: ${e.message}`);
+    res.status(500).json({ error: 'Failed to resolve URL' });
+  });
+
+  request.end();
 });
 
 // Camera Registration Route

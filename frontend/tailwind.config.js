@@ -7,12 +7,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        'codisec': {
+          blue: '#2b4896',
+          red: '#ee3234',
+          white: '#ffffff',
+          'light-blue': '#639fb9',
+        },
         'chorrillos': {
           blue: '#005fa8',
-          white: '#ffffff',
-          gold: '#e8b400',
-          dark: '#1a365d',
-          'light-blue': '#3182ce',
+          dark: '#003b6f',
+          gold: '#f2c94c',
         }
       },
       fontFamily: {

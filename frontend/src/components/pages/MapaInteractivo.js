@@ -1,10 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
-import { CameraIcon, ShieldCheckIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  MagnifyingGlassIcon, 
+  FunnelIcon, 
+  MapIcon, 
+  DocumentArrowDownIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  InformationCircleIcon
+} from '@heroicons/react/24/outline';
+import MapStats from '../map/MapStats';
 import 'leaflet/dist/leaflet.css';
 
-// Fix para los iconos de Leaflet en React
-import L from 'leaflet';
+// Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
@@ -12,272 +22,600 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
-const MapaInteractivo = () => {
-  const [filtros, setFiltros] = useState({
-    tipo: 'todos',
-    sector: 'todos',
-    estado: 'todos'
-  });
+// Componente para centrar el mapa en una ubicación
+const MapController = ({ center, zoom }) => {
+  const map = useMap();
   
-  const [mostrarFiltros, setMostrarFiltros] = useState(false);
-  const [puntos, setPuntos] = useState([]);
-  const [puntoSeleccionado, setPuntoSeleccionado] = useState(null);
-  const [mostrarIncidencias, setMostrarIncidencias] = useState(false);
-
-  // Datos de ejemplo (en producción vendrían del backend)
-  const datosEjemplo = [
-    {
-      id: 1,
-      tipo: 'camara',
-      nombre: 'Cámara Residencial Av. Defensores del Morro',
-      propietario: 'Juan Pérez',
-      direccion: 'Av. Defensores del Morro 150',
-      sector: 'centro',
-      estado: 'activo',
-      coordenadas: [-12.1784, -77.0084],
-      zonaVisibilidad: 'Entrada principal y estacionamiento',
-      grabacion: true,
-      disposicionCompartir: true
-    },
-    {
-      id: 2,
-      tipo: 'vigilante',
-      nombre: 'Carlos Rodríguez',
-      organizacion: 'Junta Vecinal',
-      direccion: 'Jr. Lima 200',
-      sector: 'playa',
-      estado: 'activo',
-      coordenadas: [-12.1790, -77.0090],
-      horario: 'Noche (10:00 PM - 6:00 AM)',
-      zonaVigilancia: 'Cuadra 2 del Jr. Lima'
-    },
-    {
-      id: 3,
-      tipo: 'camara',
-      nombre: 'Cámara Comercial Centro Comercial Chorrillos',
-      propietario: 'Centro Comercial Chorrillos S.A.',
-      direccion: 'Av. Defensores del Morro 300',
-      sector: 'centro',
-      estado: 'pendiente',
-      coordenadas: [-12.1770, -77.0070],
-      zonaVisibilidad: 'Estacionamiento y entrada principal',
-      grabacion: true,
-      disposicionCompartir: false
-    }
-  ];
-
   useEffect(() => {
-    setPuntos(datosEjemplo);
+    if (center && center.lat && center.lng) {
+      map.setView(center, zoom);
+    }
+  }, [center, zoom, map]);
+  
+  return null;
+};
+
+const MapaInteractivo = () => {
+  const { user } = useAuth();
+  const [mapData, setMapData] = useState({
+    cameras: [],
+    vigilantes: [],
+    incidents: []
+  });
+  const [filters, setFilters] = useState({
+    type: 'all',
+    sector: 'all',
+    status: 'all',
+    dateRange: 'all'
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showIncidents, setShowIncidents] = useState(false);
+  const [selectedMarker, setSelectedMarker] = useState(null);
+  const [mapCenter] = useState({ lat: -12.0464, lng: -77.0428 }); // Chorrillos, Lima
+  const [mapZoom] = useState(14);
+  
+  const mapRef = useRef();
+
+  // Datos mock para desarrollo
+  useEffect(() => {
+    const loadMapData = async () => {
+      setIsLoading(true);
+      
+      // Simular carga de datos
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockData = {
+        cameras: [
+          {
+            id: 1,
+            type: 'residential',
+            brand: 'Hikvision',
+            model: 'DS-2CD2142FWD-I',
+            location: { lat: -12.0464, lng: -77.0428 },
+            address: 'Av. Defensores del Morro 123',
+            sector: 'centro',
+            status: 'active',
+            owner: 'Juan Pérez',
+            phone: '999-999-999',
+            recording: true,
+            sharing: true,
+            lastMaintenance: '2024-01-15'
+          },
+          {
+            id: 2,
+            type: 'commercial',
+            brand: 'Dahua',
+            model: 'IPC-HDW4431C-A',
+            location: { lat: -12.0480, lng: -77.0440 },
+            address: 'Av. San Martín 456',
+            sector: 'comercial',
+            status: 'active',
+            owner: 'Comercial ABC',
+            phone: '888-888-888',
+            recording: true,
+            sharing: false,
+            lastMaintenance: '2024-02-01'
+          },
+          {
+            id: 3,
+            type: 'residential',
+            brand: 'Hikvision',
+            model: 'DS-2CD2342WD-I',
+            location: { lat: -12.0440, lng: -77.0400 },
+            address: 'Jr. Los Pinos 789',
+            sector: 'residencial',
+            status: 'maintenance',
+            owner: 'María García',
+            phone: '777-777-777',
+            recording: false,
+            sharing: true,
+            lastMaintenance: '2024-03-10'
+          }
+        ],
+        vigilantes: [
+          {
+            id: 1,
+            name: 'Carlos Rodríguez',
+            organization: 'Seguridad Privada XYZ',
+            location: { lat: -12.0470, lng: -77.0430 },
+            address: 'Av. Defensores del Morro 150',
+            sector: 'centro',
+            status: 'active',
+            schedule: '06:00 - 18:00',
+            experience: '5 años',
+            phone: '666-666-666',
+            lastPatrol: '2024-03-15 14:30'
+          },
+          {
+            id: 2,
+            name: 'Ana López',
+            organization: 'Vigilancia Comunal',
+            location: { lat: -12.0450, lng: -77.0410 },
+            address: 'Jr. Los Pinos 800',
+            sector: 'residencial',
+            status: 'active',
+            schedule: '18:00 - 06:00',
+            experience: '3 años',
+            phone: '555-555-555',
+            lastPatrol: '2024-03-15 15:45'
+          }
+        ],
+        incidents: [
+          {
+            id: 1,
+            type: 'theft',
+            location: { lat: -12.0465, lng: -77.0425 },
+            address: 'Av. Defensores del Morro 125',
+            sector: 'centro',
+            date: '2024-03-15 10:30',
+            description: 'Robo de vehículo estacionado',
+            severity: 'high',
+            status: 'investigating',
+            reportedBy: 'Juan Pérez',
+            cameraId: 1
+          },
+          {
+            id: 2,
+            type: 'vandalism',
+            location: { lat: -12.0475, lng: -77.0435 },
+            address: 'Av. San Martín 460',
+            sector: 'comercial',
+            date: '2024-03-14 22:15',
+            description: 'Grafiti en pared comercial',
+            severity: 'low',
+            status: 'resolved',
+            reportedBy: 'Comercial ABC',
+            cameraId: 2
+          }
+        ]
+      };
+      
+      setMapData(mockData);
+      setIsLoading(false);
+    };
+    
+    loadMapData();
   }, []);
 
-  const filtrarPuntos = () => {
-    let puntosFiltrados = datosEjemplo;
-
-    if (filtros.tipo !== 'todos') {
-      puntosFiltrados = puntosFiltrados.filter(punto => punto.tipo === filtros.tipo);
-    }
-
-    if (filtros.sector !== 'todos') {
-      puntosFiltrados = puntosFiltrados.filter(punto => punto.sector === filtros.sector);
-    }
-
-    if (filtros.estado !== 'todos') {
-      puntosFiltrados = puntosFiltrados.filter(punto => punto.estado === filtros.estado);
-    }
-
-    setPuntos(puntosFiltrados);
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
   };
 
-  useEffect(() => {
-    filtrarPuntos();
-  }, [filtros]);
-
-  const getIcono = (tipo) => {
-    if (tipo === 'camara') {
-      return new L.Icon({
-        iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#005fa8" width="32" height="32">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-          </svg>
-        `),
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
-      });
-    } else {
-      return new L.Icon({
-        iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#e8b400" width="32" height="32">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-          </svg>
-        `),
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32]
-      });
-    }
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    // Aquí implementaríamos la búsqueda real por dirección
   };
 
-  const getColorEstado = (estado) => {
-    switch (estado) {
-      case 'activo': return '#10b981';
-      case 'pendiente': return '#f59e0b';
-      case 'inactivo': return '#ef4444';
-      default: return '#6b7280';
+  const getFilteredData = () => {
+    let filteredCameras = mapData.cameras;
+    let filteredVigilantes = mapData.vigilantes;
+    let filteredIncidents = mapData.incidents;
+
+    // Aplicar filtros
+    if (filters.type !== 'all') {
+      filteredCameras = filteredCameras.filter(camera => camera.type === filters.type);
     }
+    
+    if (filters.sector !== 'all') {
+      filteredCameras = filteredCameras.filter(camera => camera.sector === filters.sector);
+      filteredVigilantes = filteredVigilantes.filter(vigilante => vigilante.sector === filters.sector);
+      filteredIncidents = filteredIncidents.filter(incident => incident.sector === filters.sector);
+    }
+    
+    if (filters.status !== 'all') {
+      filteredCameras = filteredCameras.filter(camera => camera.status === filters.status);
+      filteredVigilantes = filteredVigilantes.filter(vigilante => vigilante.status === filters.status);
+    }
+
+    // Aplicar búsqueda por dirección
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredCameras = filteredCameras.filter(camera => 
+        camera.address.toLowerCase().includes(query) ||
+        camera.owner.toLowerCase().includes(query)
+      );
+      filteredVigilantes = filteredVigilantes.filter(vigilante => 
+        vigilante.address.toLowerCase().includes(query) ||
+        vigilante.name.toLowerCase().includes(query)
+      );
+    }
+
+    return { filteredCameras, filteredVigilantes, filteredIncidents };
   };
 
-  const handlePuntoClick = (punto) => {
-    setPuntoSeleccionado(punto);
-    setMostrarIncidencias(false);
+  const exportToKML = () => {
+    const { filteredCameras, filteredVigilantes, filteredIncidents } = getFilteredData();
+    
+    let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Chorrillos Seguro - ${new Date().toLocaleDateString()}</name>
+    <description>Exportación de dispositivos y incidentes</description>`;
+
+    // Agregar cámaras
+    filteredCameras.forEach(camera => {
+      kml += `
+    <Placemark>
+      <name>Cámara ${camera.brand} ${camera.model}</name>
+      <description>
+        <![CDATA[
+        <b>Propietario:</b> ${camera.owner}<br/>
+        <b>Dirección:</b> ${camera.address}<br/>
+        <b>Estado:</b> ${camera.status}<br/>
+        <b>Grabación:</b> ${camera.recording ? 'Sí' : 'No'}<br/>
+        <b>Compartir:</b> ${camera.sharing ? 'Sí' : 'No'}<br/>
+        <b>Último mantenimiento:</b> ${camera.lastMaintenance}
+        ]]>
+      </description>
+      <Point>
+        <coordinates>${camera.location.lng},${camera.location.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+    });
+
+    // Agregar vigilantes
+    filteredVigilantes.forEach(vigilante => {
+      kml += `
+    <Placemark>
+      <name>Vigilante: ${vigilante.name}</name>
+      <description>
+        <![CDATA[
+        <b>Organización:</b> ${vigilante.organization}<br/>
+        <b>Dirección:</b> ${vigilante.address}<br/>
+        <b>Horario:</b> ${vigilante.schedule}<br/>
+        <b>Experiencia:</b> ${vigilante.experience}<br/>
+        <b>Última patrulla:</b> ${vigilante.lastPatrol}
+        ]]>
+      </description>
+      <Point>
+        <coordinates>${vigilante.location.lng},${vigilante.location.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+    });
+
+    // Agregar incidentes
+    filteredIncidents.forEach(incident => {
+      kml += `
+    <Placemark>
+      <name>Incidente: ${incident.type}</name>
+      <description>
+        <![CDATA[
+        <b>Fecha:</b> ${incident.date}<br/>
+        <b>Dirección:</b> ${incident.address}<br/>
+        <b>Descripción:</b> ${incident.description}<br/>
+        <b>Severidad:</b> ${incident.severity}<br/>
+        <b>Estado:</b> ${incident.status}<br/>
+        <b>Reportado por:</b> ${incident.reportedBy}
+        ]]>
+      </description>
+      <Point>
+        <coordinates>${incident.location.lng},${incident.location.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+    });
+
+    kml += `
+  </Document>
+</kml>`;
+
+    // Crear y descargar archivo
+    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chorrillos-seguro-${new Date().toISOString().split('T')[0]}.kml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const incidenciasEjemplo = [
-    {
-      id: 1,
-      fecha: '2025-01-15',
-      tipo: 'Robo',
-      descripcion: 'Robo de vehículo en estacionamiento',
-      acciones: 'Se solicitó video de la cámara, se identificó al sospechoso',
-      reporte: 'reporte_001.pdf'
-    },
-    {
-      id: 2,
-      fecha: '2025-01-10',
-      tipo: 'Vandalismo',
-      descripcion: 'Daños a propiedad privada',
-      acciones: 'Se reportó a la comisaría, se tomaron fotos',
-      reporte: 'reporte_002.pdf'
+  const getMarkerIcon = (type, status) => {
+    const baseUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/';
+    
+    if (type === 'camera') {
+      return status === 'active' ? `${baseUrl}marker-icon-2x-blue.png` : `${baseUrl}marker-icon-2x-red.png`;
+    } else if (type === 'vigilante') {
+      return `${baseUrl}marker-icon-2x-green.png`;
+    } else if (type === 'incident') {
+      return `${baseUrl}marker-icon-2x-orange.png`;
     }
-  ];
+    
+    return `${baseUrl}marker-icon-2x-grey.png`;
+  };
+
+  const { filteredCameras, filteredVigilantes, filteredIncidents } = getFilteredData();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando mapa...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Mapa Interactivo de Seguridad
+              <h1 className="text-2xl font-bold text-gray-900 font-poppins">
+                Mapa Interactivo
               </h1>
-              <p className="text-lg text-gray-600">
-                Visualice la cobertura de cámaras y vigilantes en Chorrillos
+              <p className="text-gray-600">
+                Visualiza dispositivos de seguridad y incidentes en tiempo real
               </p>
             </div>
-            
-            <div className="mt-4 md:mt-0">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={() => setMostrarFiltros(!mostrarFiltros)}
-                className="btn-primary flex items-center"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <FunnelIcon className="h-5 w-5 mr-2" />
-                Filtros
+                <FunnelIcon className="h-5 w-5" />
+                <span>Filtros</span>
+              </button>
+              <button
+                onClick={() => setShowIncidents(!showIncidents)}
+                className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <InformationCircleIcon className="h-5 w-5" />
+                <span>Incidentes</span>
+              </button>
+              <button
+                onClick={exportToKML}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <DocumentArrowDownIcon className="h-5 w-5" />
+                <span>Exportar KML</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filtros */}
-      {mostrarFiltros && (
-        <div className="bg-white border-b shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="form-label">Tipo</label>
-                <select
-                  value={filtros.tipo}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, tipo: e.target.value }))}
-                  className="form-input"
-                >
-                  <option value="todos">Todos</option>
-                  <option value="camara">Cámaras</option>
-                  <option value="vigilante">Vigilantes</option>
-                </select>
-              </div>
+      <div className="flex h-[calc(100vh-120px)]">
+        {/* Panel lateral izquierdo */}
+        <div className="w-80 bg-white shadow-lg border-r border-gray-200 overflow-y-auto">
+          {/* Estadísticas del mapa */}
+          <div className="p-4 border-b border-gray-200">
+            <MapStats data={mapData} filters={filters} />
+          </div>
+          {/* Búsqueda */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Buscar por dirección..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
+          </div>
+
+          {/* Filtros */}
+          {showFilters && (
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Filtros</h3>
               
-              <div>
-                <label className="form-label">Sector</label>
-                <select
-                  value={filtros.sector}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, sector: e.target.value }))}
-                  className="form-input"
-                >
-                  <option value="todos">Todos los sectores</option>
-                  <option value="centro">Centro</option>
-                  <option value="playa">Playa</option>
-                  <option value="morro">Morro</option>
-                  <option value="pampilla">Pampilla</option>
-                  <option value="villa">Villa</option>
-                  <option value="chavez">Chavez</option>
-                </select>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Dispositivo
+                  </label>
+                  <select
+                    value={filters.type}
+                    onChange={(e) => handleFilterChange('type', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Todos los tipos</option>
+                    <option value="residential">Residencial</option>
+                    <option value="commercial">Comercial</option>
+                    <option value="public">Público</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sector
+                  </label>
+                  <select
+                    value={filters.sector}
+                    onChange={(e) => handleFilterChange('sector', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Todos los sectores</option>
+                    <option value="centro">Centro</option>
+                    <option value="comercial">Comercial</option>
+                    <option value="residencial">Residencial</option>
+                    <option value="industrial">Industrial</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Todos los estados</option>
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo</option>
+                    <option value="maintenance">Mantenimiento</option>
+                  </select>
+                </div>
               </div>
-              
+            </div>
+          )}
+
+          {/* Lista de dispositivos */}
+          <div className="p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Dispositivos</h3>
+            
+            <div className="space-y-3">
+              {/* Cámaras */}
               <div>
-                <label className="form-label">Estado</label>
-                <select
-                  value={filtros.estado}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, estado: e.target.value }))}
-                  className="form-input"
-                >
-                  <option value="todos">Todos los estados</option>
-                  <option value="activo">Activo</option>
-                  <option value="pendiente">Pendiente</option>
-                  <option value="inactivo">Inactivo</option>
-                </select>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <MapIcon className="h-4 w-4 mr-2" />
+                  Cámaras ({filteredCameras.length})
+                </h4>
+                <div className="space-y-2">
+                  {filteredCameras.map(camera => (
+                    <div
+                      key={camera.id}
+                      className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => setSelectedMarker({ type: 'camera', data: camera })}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{camera.brand} {camera.model}</p>
+                          <p className="text-xs text-gray-600">{camera.address}</p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          camera.status === 'active' ? 'bg-green-100 text-green-800' :
+                          camera.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {camera.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vigilantes */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <MapIcon className="h-4 w-4 mr-2" />
+                  Vigilantes ({filteredVigilantes.length})
+                </h4>
+                <div className="space-y-2">
+                  {filteredVigilantes.map(vigilante => (
+                    <div
+                      key={vigilante.id}
+                      className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => setSelectedMarker({ type: 'vigilante', data: vigilante })}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{vigilante.name}</p>
+                          <p className="text-xs text-gray-600">{vigilante.address}</p>
+                        </div>
+                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                          {vigilante.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Mapa y Panel de Información */}
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-200px)]">
         {/* Mapa */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <MapContainer
-            center={[-12.1784, -77.0084]}
-            zoom={15}
+            ref={mapRef}
+            center={mapCenter}
+            zoom={mapZoom}
             className="h-full w-full"
-            style={{ minHeight: '500px' }}
           >
+            <MapController center={mapCenter} zoom={mapZoom} />
+            
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
-            
-            {puntos.map((punto) => (
+
+            {/* Marcadores de cámaras */}
+            {filteredCameras.map(camera => (
               <Marker
-                key={punto.id}
-                position={punto.coordenadas}
-                icon={getIcono(punto.tipo)}
+                key={`camera-${camera.id}`}
+                position={camera.location}
+                icon={L.icon({
+                  iconUrl: getMarkerIcon('camera', camera.status),
+                  iconSize: [25, 41],
+                  iconAnchor: [12, 41],
+                  popupAnchor: [1, -34]
+                })}
                 eventHandlers={{
-                  click: () => handlePuntoClick(punto)
+                  click: () => setSelectedMarker({ type: 'camera', data: camera })
                 }}
               >
                 <Popup>
                   <div className="p-2">
-                    <h3 className="font-semibold text-lg mb-2">{punto.nombre}</h3>
-                    <div className="space-y-1 text-sm">
-                      <p><strong>Tipo:</strong> {punto.tipo === 'camara' ? 'Cámara' : 'Vigilante'}</p>
-                      <p><strong>Dirección:</strong> {punto.direccion}</p>
-                      <p><strong>Sector:</strong> {punto.sector}</p>
-                      <p><strong>Estado:</strong> 
-                        <span 
-                          className="ml-1 px-2 py-1 rounded-full text-xs text-white"
-                          style={{ backgroundColor: getColorEstado(punto.estado) }}
-                        >
-                          {punto.estado}
-                        </span>
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handlePuntoClick(punto)}
-                      className="btn-primary w-full mt-3 text-sm"
-                    >
-                      Ver Detalles
-                    </button>
+                    <h3 className="font-medium text-gray-900">{camera.brand} {camera.model}</h3>
+                    <p className="text-sm text-gray-600">{camera.address}</p>
+                    <p className="text-sm text-gray-600">Propietario: {camera.owner}</p>
+                    <p className="text-sm text-gray-600">Estado: {camera.status}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Marcadores de vigilantes */}
+            {filteredVigilantes.map(vigilante => (
+              <Marker
+                key={`vigilante-${vigilante.id}`}
+                position={vigilante.location}
+                icon={L.icon({
+                  iconUrl: getMarkerIcon('vigilante'),
+                  iconSize: [25, 41],
+                  iconAnchor: [12, 41],
+                  popupAnchor: [1, -34]
+                })}
+                eventHandlers={{
+                  click: () => setSelectedMarker({ type: 'vigilante', data: vigilante })
+                }}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-medium text-gray-900">{vigilante.name}</h3>
+                    <p className="text-sm text-gray-600">{vigilante.address}</p>
+                    <p className="text-sm text-gray-600">Organización: {vigilante.organization}</p>
+                    <p className="text-sm text-gray-600">Horario: {vigilante.schedule}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Marcadores de incidentes */}
+            {showIncidents && filteredIncidents.map(incident => (
+              <Marker
+                key={`incident-${incident.id}`}
+                position={incident.location}
+                icon={L.icon({
+                  iconUrl: getMarkerIcon('incident'),
+                  iconSize: [25, 41],
+                  iconAnchor: [12, 41],
+                  popupAnchor: [1, -34]
+                })}
+                eventHandlers={{
+                  click: () => setSelectedMarker({ type: 'incident', data: incident })
+                }}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <h3 className="font-medium text-gray-900">Incidente: {incident.type}</h3>
+                    <p className="text-sm text-gray-600">{incident.address}</p>
+                    <p className="text-sm text-gray-600">Fecha: {incident.date}</p>
+                    <p className="text-sm text-gray-600">Descripción: {incident.description}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -285,179 +623,133 @@ const MapaInteractivo = () => {
           </MapContainer>
         </div>
 
-        {/* Panel de Información */}
-        {puntoSeleccionado && (
-          <div className="w-full lg:w-96 bg-white border-l shadow-lg overflow-y-auto">
-            <div className="p-6">
+        {/* Panel lateral derecho - Detalles del marcador seleccionado */}
+        {selectedMarker && (
+          <div className="w-80 bg-white shadow-lg border-l border-gray-200 overflow-y-auto">
+            <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {puntoSeleccionado.nombre}
-                </h2>
+                <h3 className="text-lg font-medium text-gray-900">
+                  {selectedMarker.type === 'camera' ? 'Detalles de Cámara' :
+                   selectedMarker.type === 'vigilante' ? 'Detalles de Vigilante' :
+                   'Detalles de Incidente'}
+                </h3>
                 <button
-                  onClick={() => setPuntoSeleccionado(null)}
+                  onClick={() => setSelectedMarker(null)}
                   className="text-gray-400 hover:text-gray-600"
                 >
-                  ✕
+                  <EyeSlashIcon className="h-5 w-5" />
                 </button>
               </div>
 
-              {/* Información del punto */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center">
-                  {puntoSeleccionado.tipo === 'camara' ? (
-                    <CameraIcon className="h-6 w-6 text-chorrillos-blue mr-2" />
-                  ) : (
-                    <ShieldCheckIcon className="h-6 w-6 text-chorrillos-gold mr-2" />
-                  )}
-                  <span className="font-medium">
-                    {puntoSeleccionado.tipo === 'camara' ? 'Cámara de Seguridad' : 'Vigilante Vecinal'}
-                  </span>
+              {selectedMarker.type === 'camera' && (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Modelo</p>
+                    <p className="text-gray-900">{selectedMarker.data.brand} {selectedMarker.data.model}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Propietario</p>
+                    <p className="text-gray-900">{selectedMarker.data.owner}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Dirección</p>
+                    <p className="text-gray-900">{selectedMarker.data.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Estado</p>
+                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                      selectedMarker.data.status === 'active' ? 'bg-green-100 text-green-800' :
+                      selectedMarker.data.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {selectedMarker.data.status}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Grabación</p>
+                    <p className="text-gray-900">{selectedMarker.data.recording ? 'Sí' : 'No'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Compartir</p>
+                    <p className="text-gray-900">{selectedMarker.data.sharing ? 'Sí' : 'No'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Último Mantenimiento</p>
+                    <p className="text-gray-900">{selectedMarker.data.lastMaintenance}</p>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Dirección</p>
-                  <p className="font-medium">{puntoSeleccionado.direccion}</p>
+              {selectedMarker.type === 'vigilante' && (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Nombre</p>
+                    <p className="text-gray-900">{selectedMarker.data.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Organización</p>
+                    <p className="text-gray-900">{selectedMarker.data.organization}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Dirección</p>
+                    <p className="text-gray-900">{selectedMarker.data.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Horario</p>
+                    <p className="text-gray-900">{selectedMarker.data.schedule}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Experiencia</p>
+                    <p className="text-gray-900">{selectedMarker.data.experience}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Última Patrulla</p>
+                    <p className="text-gray-900">{selectedMarker.data.lastPatrol}</p>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Sector</p>
-                  <p className="font-medium capitalize">{puntoSeleccionado.sector}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Estado</p>
-                  <span 
-                    className="px-3 py-1 rounded-full text-sm text-white font-medium"
-                    style={{ backgroundColor: getColorEstado(puntoSeleccionado.estado) }}
-                  >
-                    {puntoSeleccionado.estado}
-                  </span>
-                </div>
-
-                {puntoSeleccionado.tipo === 'camara' && (
-                  <>
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Propietario</p>
-                      <p className="font-medium">{puntoSeleccionado.propietario}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Zona de Visibilidad</p>
-                      <p className="font-medium">{puntoSeleccionado.zonaVisibilidad}</p>
-                    </div>
-                    <div className="flex space-x-4">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Grabación</p>
-                        <span className={`px-2 py-1 rounded text-xs ${puntoSeleccionado.grabacion ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {puntoSeleccionado.grabacion ? 'Sí' : 'No'}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Disposición a Compartir</p>
-                        <span className={`px-2 py-1 rounded text-xs ${puntoSeleccionado.disposicionCompartir ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                          {puntoSeleccionado.disposicionCompartir ? 'Sí' : 'No'}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {puntoSeleccionado.tipo === 'vigilante' && (
-                  <>
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Organización</p>
-                      <p className="font-medium">{puntoSeleccionado.organizacion}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Horario</p>
-                      <p className="font-medium">{puntoSeleccionado.horario}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">Zona de Vigilancia</p>
-                      <p className="font-medium">{puntoSeleccionado.zonaVigilancia}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Botones de acción */}
-              <div className="space-y-3 mb-6">
-                <button
-                  onClick={() => setMostrarIncidencias(!mostrarIncidencias)}
-                  className="btn-primary w-full"
-                >
-                  {mostrarIncidencias ? 'Ocultar' : 'Ver'} Historial de Incidencias
-                </button>
-                
-                {puntoSeleccionado.tipo === 'camara' && (
-                  <button className="btn-outline w-full">
-                    Solicitar Imágenes
-                  </button>
-                )}
-              </div>
-
-              {/* Historial de Incidencias */}
-              {mostrarIncidencias && (
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold text-lg mb-3">Historial de Incidencias</h3>
-                  <div className="space-y-3">
-                    {incidenciasEjemplo.map((incidencia) => (
-                      <div key={incidencia.id} className="border rounded-lg p-3 bg-gray-50">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-sm font-medium text-gray-900">
-                            {incidencia.tipo}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {incidencia.fecha}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700 mb-2">
-                          {incidencia.descripcion}
-                        </p>
-                        <p className="text-xs text-gray-600 mb-2">
-                          <strong>Acciones:</strong> {incidencia.acciones}
-                        </p>
-                        <a
-                          href={`#${incidencia.reporte}`}
-                          className="text-xs text-chorrillos-blue hover:underline"
-                        >
-                          Ver reporte
-                        </a>
-                      </div>
-                    ))}
+              {selectedMarker.type === 'incident' && (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Tipo</p>
+                    <p className="text-gray-900 capitalize">{selectedMarker.data.type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Fecha</p>
+                    <p className="text-gray-900">{selectedMarker.data.date}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Dirección</p>
+                    <p className="text-gray-900">{selectedMarker.data.address}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Descripción</p>
+                    <p className="text-gray-900">{selectedMarker.data.description}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Severidad</p>
+                    <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                      selectedMarker.data.severity === 'high' ? 'bg-red-100 text-red-800' :
+                      selectedMarker.data.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {selectedMarker.data.severity}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Estado</p>
+                    <p className="text-gray-900">{selectedMarker.data.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Reportado por</p>
+                    <p className="text-gray-900">{selectedMarker.data.reportedBy}</p>
                   </div>
                 </div>
               )}
             </div>
           </div>
         )}
-      </div>
-
-      {/* Leyenda */}
-      <div className="bg-white border-t p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-wrap items-center justify-center space-x-6 text-sm">
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-chorrillos-blue rounded-full mr-2"></div>
-              <span>Cámaras</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-chorrillos-gold rounded-full mr-2"></div>
-              <span>Vigilantes</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-green-500 rounded-full mr-2"></div>
-              <span>Activo</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-yellow-500 rounded-full mr-2"></div>
-              <span>Pendiente</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-red-500 rounded-full mr-2"></div>
-              <span>Inactivo</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

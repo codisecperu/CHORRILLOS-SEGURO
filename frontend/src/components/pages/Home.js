@@ -56,14 +56,14 @@ const Home = () => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                to="/empadronar-camaras"
+                to="/empadronamiento-camaras"
                 className="btn-secondary text-lg px-8 py-4 flex items-center justify-center"
               >
                 <CameraIcon className="h-6 w-6 mr-2" />
                 Empadronar Cámara
               </Link>
               <Link
-                to="/empadronar-vigilantes"
+                to="/empadronamiento-vigilantes"
                 className="btn-outline text-lg px-8 py-4 flex items-center justify-center border-white text-white hover:bg-white hover:text-chorrillos-blue"
               >
                 <ShieldCheckIcon className="h-6 w-6 mr-2" />
@@ -191,13 +191,13 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              to="/empadronar-camaras"
+              to="/empadronamiento-camaras"
               className="btn-secondary text-lg px-8 py-4"
             >
               Empadronar mi Cámara
             </Link>
             <Link
-              to="/empadronar-vigilantes"
+              to="/empadronamiento-vigilantes"
               className="btn-outline text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-chorrillos-blue"
             >
               Registrarme como Vigilante

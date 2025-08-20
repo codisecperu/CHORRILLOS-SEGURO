@@ -28,12 +28,12 @@ const Footer = () => {
             <h4 className="text-lg font-semibold mb-4 text-chorrillos-gold">Enlaces Rápidos</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/empadronar-camaras" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/empadronamiento-camaras" className="text-gray-300 hover:text-white transition-colors">
                   Empadronar Cámaras
                 </Link>
               </li>
               <li>
-                <Link to="/empadronar-vigilantes" className="text-gray-300 hover:text-white transition-colors">
+                <Link to="/empadronamiento-vigilantes" className="text-gray-300 hover:text-white transition-colors">
                   Empadronar Vigilantes
                 </Link>
               </li>

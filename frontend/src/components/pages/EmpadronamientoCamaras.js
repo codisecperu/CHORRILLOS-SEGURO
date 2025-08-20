@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { CameraIcon, MapPinIcon, UserIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
+import { CameraIcon, MapPinIcon, UserIcon, DevicePhoneMobileIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { extractCoordinatesFromGoogleMaps, isValidGoogleMapsUrl, getAddressFromCoordinates } from '../../utils/coordinateExtractor';
 
 const EmpadronamientoCamaras = () => {
   const [formData, setFormData] = useState({
@@ -34,6 +35,8 @@ const EmpadronamientoCamaras = () => {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [isExtractingCoordinates, setIsExtractingCoordinates] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -53,6 +56,64 @@ const EmpadronamientoCamaras = () => {
     if (file && file.type.startsWith('image/')) {
       setFormData(prev => ({ ...prev, imagenReferencial: file }));
     }
+  };
+
+  // Función para extraer coordenadas desde Google Maps
+  const handleExtractCoordinates = async () => {
+    if (!googleMapsUrl.trim()) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'Ingrese un enlace de Google Maps' }));
+      return;
+    }
+
+    if (!isValidGoogleMapsUrl(googleMapsUrl)) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'El enlace no es válido de Google Maps' }));
+      return;
+    }
+
+    setIsExtractingCoordinates(true);
+    setErrors(prev => ({ ...prev, googleMapsUrl: '' }));
+
+    try {
+      const coordinates = await extractCoordinatesFromGoogleMaps(googleMapsUrl);
+      
+      if (coordinates) {
+        setFormData(prev => ({
+          ...prev,
+          coordenadas: coordinates
+        }));
+
+        // Obtener dirección automáticamente
+        const address = await getAddressFromCoordinates(coordinates.lat, coordinates.lng);
+        if (address && address !== 'Error al obtener dirección' && address !== 'Dirección no encontrada') {
+          setFormData(prev => ({
+            ...prev,
+            direccion: address
+          }));
+        }
+
+        // Limpiar el enlace después de extraer
+        setGoogleMapsUrl('');
+      } else {
+        setErrors(prev => ({ ...prev, googleMapsUrl: 'No se pudieron extraer coordenadas del enlace' }));
+        // Ensure coordinates are reset to a valid state object
+        setFormData(prev => ({
+          ...prev,
+          coordenadas: { lat: '', lng: '' }
+        }));
+      }
+    } catch (error) {
+      setErrors(prev => ({ ...prev, googleMapsUrl: 'Error al procesar el enlace' }));
+    } finally {
+      setIsExtractingCoordinates(false);
+    }
+  };
+
+  // Función para limpiar coordenadas
+  const handleClearCoordinates = () => {
+    setFormData(prev => ({
+      ...prev,
+      coordenadas: { lat: '', lng: '' }
+    }));
   };
 
   const validateStep = (currentStep) => {
@@ -379,6 +440,75 @@ const EmpadronamientoCamaras = () => {
           )}
         </div>
 
+        {/* Campo para enlace de Google Maps */}
+        <div className="md:col-span-2">
+          <label className="form-label flex items-center">
+            <LinkIcon className="h-4 w-4 inline mr-2" />
+            Enlace de Google Maps (Opcional)
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="url"
+              value={googleMapsUrl}
+              onChange={(e) => setGoogleMapsUrl(e.target.value)}
+              className={`form-input flex-1 ${errors.googleMapsUrl ? 'border-red-500' : ''}`}
+              placeholder="https://maps.google.com/... o https://maps.app.goo.gl/..."
+            />
+            <button
+              type="button"
+              onClick={handleExtractCoordinates}
+              disabled={isExtractingCoordinates || !googleMapsUrl.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            >
+              {isExtractingCoordinates ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Extrayendo...</span>
+                </>
+              ) : (
+                <>
+                  <MagnifyingGlassIcon className="h-4 w-4" />
+                  <span>Extraer</span>
+                </>
+              )}
+            </button>
+          </div>
+          {errors.googleMapsUrl && (
+            <p className="text-red-500 text-sm mt-1">{errors.googleMapsUrl}</p>
+          )}
+          <p className="text-sm text-gray-500 mt-1">
+            Pegue un enlace de Google Maps para extraer automáticamente las coordenadas y dirección
+          </p>
+        </div>
+
+        {/* Coordenadas extraídas */}
+        {(formData.coordenadas.lat || formData.coordenadas.lng) && (
+          <div className="md:col-span-2 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-green-800 mb-2">Coordenadas Extraídas</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-green-600">Latitud:</span>
+                    <p className="text-sm font-medium text-green-900">{formData.coordenadas.lat}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-green-600">Longitud:</span>
+                    <p className="text-sm font-medium text-green-900">{formData.coordenadas.lng}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearCoordinates}
+                className="text-green-600 hover:text-green-800 text-sm font-medium"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="form-label">Latitud</label>
           <input
@@ -445,23 +575,25 @@ const EmpadronamientoCamaras = () => {
         </span>
       </div>
       <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-chorrillos-blue h-2 rounded-full transition-all duration-300"
-          style={{ width: `${(step / 3) * 100}%` }}
-        ></div>
-      </div>
+            <div
+              className="bg-codisec-blue h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(step / 3) * 100}%` }}
+            ></div>
+          </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-screen-md mx-auto px-4 sm:px-6 lg:px-8 lg:max-w-screen-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-chorrillos-blue rounded-full flex items-center justify-center">
+          <div className="flex justify-center items-center mb-4 space-x-4">
+            <img src="../../../../imagenes/logo_codisec.png" alt="Logo CODISEC" className="h-16" />
+            <div className="w-16 h-16 bg-codisec-blue rounded-full flex items-center justify-center">
               <CameraIcon className="h-8 w-8 text-white" />
             </div>
+            <img src="../../../../imagenes/logo_municipalidad.png" alt="Logo Municipalidad de Chorrillos" className="h-16" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Empadronamiento de Cámaras
