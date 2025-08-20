@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { useAuth } from '../../contexts/AuthContext';
+// import { useAuth } from '../../contexts/AuthContext';
 import { 
   MagnifyingGlassIcon, 
   FunnelIcon, 
   MapIcon, 
   DocumentArrowDownIcon,
-  EyeIcon,
+  
   EyeSlashIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';

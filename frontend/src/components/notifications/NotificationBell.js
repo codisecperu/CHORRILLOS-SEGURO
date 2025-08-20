@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BellIcon, XMarkIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { BellIcon, CheckIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useNotifications } from '../../contexts/NotificationContext';
 
 const NotificationBell = () => {

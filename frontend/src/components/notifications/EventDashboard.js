@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ChartBarIcon, 
-  CalendarIcon, 
+   
   ClockIcon, 
   ExclamationTriangleIcon,
   CheckCircleIcon,
@@ -55,10 +55,10 @@ const EventDashboard = () => {
   }, {});
 
   // Estadísticas por tipo
-  const typeStats = filteredNotifications.reduce((acc, notif) => {
-    acc[notif.type] = (acc[notif.type] || 0) + 1;
-    return acc;
-  }, {});
+  // const typeStats = filteredNotifications.reduce((acc, notif) => {
+  //   acc[notif.type] = (acc[notif.type] || 0) + 1;
+  //   return acc;
+  // }, {});
 
   // Gráfico de barras simple para prioridades
   const PriorityChart = () => {
