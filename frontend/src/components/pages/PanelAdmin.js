@@ -8,7 +8,8 @@ import {
   DocumentArrowDownIcon,
   FunnelIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 
 const PanelAdmin = () => {
