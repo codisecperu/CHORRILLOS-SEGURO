@@ -61,7 +61,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos de React
-app.use(express.static(path.join(__dirname, '../frontend/build')));
+// app.use(express.static(path.join(__dirname, '../frontend/build'))); // Frontend is served by Netlify
 app.use('/uploads', express.static('uploads')); // Serve uploaded files
 
 // Basic Route
@@ -278,9 +278,9 @@ app.delete('/api/vigilantes/:id', async (req, res) => {
 
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('/*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
-});
+// app.get('/*', (req, res) => {
+//   res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+// }); // Frontend is served by Netlify
 
 app.listen(port, () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
