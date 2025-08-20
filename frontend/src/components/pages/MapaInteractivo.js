@@ -36,7 +36,6 @@ const MapController = ({ center, zoom }) => {
 };
 
 const MapaInteractivo = () => {
-  const { user } = useAuth();
   const [mapData, setMapData] = useState({
     cameras: [],
     vigilantes: [],

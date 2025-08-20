@@ -69,15 +69,15 @@ const Footer = () => {
               © 2025 Municipalidad de Chorrillos. Todos los derechos reservados.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <button className="text-gray-400 hover:text-white transition-colors">
                 Política de Privacidad
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              </button>
+              <button className="text-gray-400 hover:text-white transition-colors">
                 Términos de Uso
-              </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              </button>
+              <button className="text-gray-400 hover:text-white transition-colors">
                 Accesibilidad
-              </a>
+              </button>
             </div>
           </div>
         </div>

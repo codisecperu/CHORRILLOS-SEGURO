@@ -7,9 +7,6 @@ import {
   ShieldCheckIcon,
   DocumentArrowDownIcon,
   FunnelIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
   CheckIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
