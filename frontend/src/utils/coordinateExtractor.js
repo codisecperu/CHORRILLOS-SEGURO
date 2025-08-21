@@ -1,68 +1,26 @@
 // src/utils/coordinateExtractor.js
 
-// Utilidad para extraer coordenadas desde enlaces de Google Maps
+// Esta función ahora solo llama a nuestra API de Netlify y devuelve el resultado.
 export const extractCoordinatesFromGoogleMaps = async (url) => {
   try {
-    let urlToParse = url;
-
-    // Si es un enlace acortado, lo resolvemos con la Netlify Function a través del proxy /api
-    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
-      try {
-        const response = await fetch(
-          `/api/resolveUrl?url=${encodeURIComponent(url)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          urlToParse = data.resolvedUrl;
-        } else {
-          console.warn('No se pudo resolver URL acortada, se intentará parsear directo.');
-        }
-      } catch (err) {
-        console.error('Error resolviendo URL acortada:', err);
-      }
+    const response = await fetch(`/api/resolveUrl?url=${encodeURIComponent(url)}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error desde la API de Netlify:', errorData.error);
+      return null;
     }
 
-    // Patrones comunes de Google Maps
-    const patterns = [
-      // Formato: https://www.google.com/maps/place/.../@lat,lng
-      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      // Formato: https://www.google.com/maps?q=lat,lng
-      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      // Formato: https://www.google.com/maps?ll=lat,lng
-      /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      // Formato de datos de URL: !3dLAT!4dLNG
-      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
-      // A veces: !2dLNG!3dLAT
-      /!2d(-?\d+\.\d+)!3d(-?\d+\.\d+)/,
-    ];
+    const data = await response.json();
+    return data; // Devuelve directamente { lat, lng } o un error
 
-    for (const pattern of patterns) {
-      const match = urlToParse.match(pattern);
-      if (match) {
-        // Dependiendo del patrón cambia el orden de lat/lng
-        let lat, lng;
-        if (pattern.toString().includes('!2d')) {
-          // Caso especial: !2dLNG!3dLAT
-          lng = parseFloat(match[1]);
-          lat = parseFloat(match[2]);
-        } else {
-          lat = parseFloat(match[1]);
-          lng = parseFloat(match[2]);
-        }
-
-        // Validar coordenadas
-        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          return { lat, lng };
-        }
-      }
-    }
-
-    return null;
   } catch (error) {
-    console.error('Error al extraer coordenadas:', error);
+    console.error('Error al llamar a la función de extracción:', error);
     return null;
   }
 };
+
+// El resto de las funciones de utilidad permanecen igual
 
 // Verifica si el enlace es de Google Maps
 export const isValidGoogleMapsUrl = (url) => {
