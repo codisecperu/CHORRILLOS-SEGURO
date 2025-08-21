@@ -5,7 +5,7 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
     // Check if it's a shortened URL that needs to be resolved
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
       // Use our Netlify function to resolve the shortened URL
-      const response = await fetch(\/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`);`
+      const response = await fetch(/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`);`
       if (response.ok) {
         const data = await response.json();
         urlToParse = data.resolvedUrl;
