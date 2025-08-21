@@ -1,0 +1,23 @@
+# Configuración de Build (desde la raíz del proyecto)
+[build]
+  # Directorio base para el build. Netlify ejecutará el comando desde aquí.
+  base = "frontend"
+  # Comando para construir el frontend (se ejecuta dentro de la base).
+  command = "npm run build"
+  # Directorio que se publicará (relativo a la base).
+  publish = "build"
+
+# Directorio de las funciones (relativo a la raíz del proyecto).
+[functions]
+  directory = "netlify/functions"
+
+# Reglas de redirección para SPA y proxy de funciones
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
