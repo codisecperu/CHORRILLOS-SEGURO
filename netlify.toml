@@ -1,2 +1,21 @@
+# Configuración de Build
 [build]
+  # Directorio donde se encuentran las funciones serverless
   functions = "netlify/functions"
+  # Directorio que se publicará (el resultado del build de React)
+  publish = "frontend/build"
+  # Comando para construir el frontend
+  command = "npm run build --prefix frontend"
+
+# Reglas de redirección para una Single Page App (SPA) como React
+[[redirects]]
+  # Redirige todas las llamadas a /.netlify/functions a la función correspondiente
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  # Redirige cualquier otra ruta al index.html para que React Router funcione
+  from = "/*"
+  to = "/index.html"
+  status = 200
