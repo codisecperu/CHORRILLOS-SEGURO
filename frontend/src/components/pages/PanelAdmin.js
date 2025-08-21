@@ -34,10 +34,23 @@ const PanelAdmin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Llama a tu función de Netlify usando una ruta relativa.
+    // Esto funciona tanto en desarrollo (con netlify dev) como en producción.
+    fetch('/.netlify/functions/hello-world')
+      .then(response => response.text()) // La función hello-world devuelve texto, no JSON
+      .then(data => {
+        console.log('Respuesta de la función hello-world:', data);
+        // Aquí podrías, por ejemplo, mostrar el mensaje en algún lugar
+      })
+      .catch(err => console.error('Error al llamar la función de Netlify', err));
+
+    // Tu fetch original a la API del backend.
+    // NOTA: Esto solo funcionará si tu backend en localhost:5000 está corriendo.
+    // Para producción, necesitarás desplegar también tu backend y usar su URL pública aquí.
     fetch('http://localhost:5000/api/stats')
       .then(r => r.json())
       .then(data => setEstadisticas(prev => ({ ...prev, totalCamaras: data.cameras, totalVigilantes: data.vigilantes })))
-      .catch(err => console.error('Error fetching stats', err));
+      .catch(err => console.error('Error fetching stats from localhost', err));
   }, []);
 
   const registrosPendientes = [
