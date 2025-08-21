@@ -1,17 +1,24 @@
-// Utilidades para extraer coordenadas desde enlaces de Google Maps
+// src/utils/coordinateExtractor.js
+
+// Utilidad para extraer coordenadas desde enlaces de Google Maps
 export const extractCoordinatesFromGoogleMaps = async (url) => {
   try {
     let urlToParse = url;
-    // Check if it's a shortened URL that needs to be resolved
+
+    // Si es un enlace acortado, lo resolvemos con la Netlify Function
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
-      // Usa nuestra Netlify Function para resolver la URL acortada
-      const response = await fetch(`/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`);
-      if (response.ok) {
-        const data = await response.json();
-        urlToParse = data.resolvedUrl;
-      } else {
-        // If fetching fails, try to parse the original URL anyway
-        console.error('Failed to resolve shortened URL, proceeding with original.');
+      try {
+        const response = await fetch(
+          `/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          urlToParse = data.resolvedUrl;
+        } else {
+          console.warn('No se pudo resolver URL acortada, se intentará parsear directo.');
+        }
+      } catch (err) {
+        console.error('Error resolviendo URL acortada:', err);
       }
     }
 
@@ -20,20 +27,30 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
       // Formato: https://www.google.com/maps/place/.../@lat,lng
       /@(-?\d+\.\d+),(-?\d+\.\d+)/,
       // Formato: https://www.google.com/maps?q=lat,lng
-      /q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
       // Formato: https://www.google.com/maps?ll=lat,lng
-      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      // Formato de datos de URL: !3d-12.345!4d-56.789
+      /[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      // Formato de datos de URL: !3dLAT!4dLNG
       /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+      // A veces: !2dLNG!3dLAT
+      /!2d(-?\d+\.\d+)!3d(-?\d+\.\d+)/,
     ];
 
     for (const pattern of patterns) {
       const match = urlToParse.match(pattern);
       if (match) {
-        const lat = parseFloat(match[1]);
-        const lng = parseFloat(match[2]);
-        
-        // Validar que las coordenadas sean válidas
+        // Dependiendo del patrón cambia el orden de lat/lng
+        let lat, lng;
+        if (pattern.toString().includes('!2d')) {
+          // Caso especial: !2dLNG!3dLAT
+          lng = parseFloat(match[1]);
+          lat = parseFloat(match[2]);
+        } else {
+          lat = parseFloat(match[1]);
+          lng = parseFloat(match[2]);
+        }
+
+        // Validar coordenadas
         if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
           return { lat, lng };
         }
@@ -47,7 +64,7 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
   }
 };
 
-// Función para validar si es un enlace de Google Maps válido
+// Verifica si el enlace es de Google Maps
 export const isValidGoogleMapsUrl = (url) => {
   const googleMapsPatterns = [
     /^https?:\/\/(www\.)?google\.com\/maps/,
@@ -55,22 +72,19 @@ export const isValidGoogleMapsUrl = (url) => {
     /^https?:\/\/maps\.app\.goo\.gl/,
     /^https?:\/\/goo\.gl\/maps/,
   ];
-
-  return googleMapsPatterns.some(pattern => pattern.test(url));
+  return googleMapsPatterns.some((pattern) => pattern.test(url));
 };
 
-// Función para obtener la dirección desde coordenadas (usando API de Nominatim)
+// Convierte coordenadas a dirección usando Nominatim
 export const getAddressFromCoordinates = async (lat, lng) => {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
     );
-    
     if (response.ok) {
       const data = await response.json();
       return data.display_name || 'Dirección no encontrada';
     }
-    
     return 'Error al obtener dirección';
   } catch (error) {
     console.error('Error al obtener dirección:', error);
@@ -78,24 +92,24 @@ export const getAddressFromCoordinates = async (lat, lng) => {
   }
 };
 
-// Función para obtener coordenadas desde dirección (usando API de Nominatim)
+// Convierte dirección a coordenadas usando Nominatim
 export const getCoordinatesFromAddress = async (address) => {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        address
+      )}&limit=1&addressdetails=1`
     );
-    
     if (response.ok) {
       const data = await response.json();
       if (data.length > 0) {
         return {
           lat: parseFloat(data[0].lat),
           lng: parseFloat(data[0].lon),
-          address: data[0].display_name
+          address: data[0].display_name,
         };
       }
     }
-    
     return null;
   } catch (error) {
     console.error('Error al obtener coordenadas:', error);
