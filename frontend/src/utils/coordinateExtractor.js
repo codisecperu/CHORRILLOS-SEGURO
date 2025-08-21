@@ -3,18 +3,17 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
   try {
     let urlToParse = url;
     // Check if it's a shortened URL that needs to be resolved
-    // if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
-    //   // This requires a backend function to resolve the URL, which is not yet implemented.
-    //   // Temporarily disabled to prevent errors.
-    //   const response = await fetch(`/api/resolve-url?url=${encodeURIComponent(url)}`);
-    //   if (response.ok) {
-    //     const data = await response.json();
-    //     urlToParse = data.resolvedUrl;
-    //   } else {
-    //     // If fetching fails, try to parse the original URL anyway
-    //     console.error('Failed to resolve shortened URL, proceeding with original.');
-    //   }
-    // }
+    if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
+      // Use our Netlify function to resolve the shortened URL
+      const response = await fetch(`/.netlify/functions/resolve-url?url=${encodeURIComponent(url)}`);
+      if (response.ok) {
+        const data = await response.json();
+        urlToParse = data.resolvedUrl;
+      } else {
+        // If fetching fails, try to parse the original URL anyway
+        console.error('Failed to resolve shortened URL, proceeding with original.');
+      }
+    }
 
     // Patrones comunes de Google Maps
     const patterns = [
