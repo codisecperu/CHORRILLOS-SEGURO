@@ -1,10 +1,13 @@
 // src/utils/coordinateExtractor.js
 
-// Esta función ahora solo llama a nuestra API de Netlify y devuelve el resultado.
-export const extractCoordinatesFromGoogleMaps = async (url) => {
+// Llama a nuestra función de Netlify usando el método POST
+export const extractCoordinatesFromGoogleMaps = async (shortUrl) => {
   try {
-    const response = await fetch(`/api/resolveUrl?url=${encodeURIComponent(url)}`);
-    
+    const response = await fetch("/.netlify/functions/resolveUrl", {
+      method: "POST",
+      body: JSON.stringify({ url: shortUrl }),
+    });
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Error desde la API de Netlify:', errorData.error);
@@ -12,7 +15,7 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
     }
 
     const data = await response.json();
-    return data; // Devuelve directamente { lat, lng } o un error
+    return data; // Devuelve { resolvedUrl, lat, lng }
 
   } catch (error) {
     console.error('Error al llamar a la función de extracción:', error);
@@ -22,7 +25,6 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
 
 // El resto de las funciones de utilidad permanecen igual
 
-// Verifica si el enlace es de Google Maps
 export const isValidGoogleMapsUrl = (url) => {
   const googleMapsPatterns = [
     /^https?:\/\/(www\.)?google\.com\/maps/,
@@ -33,7 +35,6 @@ export const isValidGoogleMapsUrl = (url) => {
   return googleMapsPatterns.some((pattern) => pattern.test(url));
 };
 
-// Convierte coordenadas a dirección usando Nominatim
 export const getAddressFromCoordinates = async (lat, lng) => {
   try {
     const response = await fetch(
@@ -50,7 +51,6 @@ export const getAddressFromCoordinates = async (lat, lng) => {
   }
 };
 
-// Convierte dirección a coordenadas usando Nominatim
 export const getCoordinatesFromAddress = async (address) => {
   try {
     const response = await fetch(
