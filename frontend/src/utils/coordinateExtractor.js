@@ -5,11 +5,11 @@ export const extractCoordinatesFromGoogleMaps = async (url) => {
   try {
     let urlToParse = url;
 
-    // Si es un enlace acortado, lo resolvemos con la Netlify Function
+    // Si es un enlace acortado, lo resolvemos con la Netlify Function a través del proxy /api
     if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
       try {
         const response = await fetch(
-          `/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`
+          `/api/resolveUrl?url=${encodeURIComponent(url)}`
         );
         if (response.ok) {
           const data = await response.json();
