@@ -109,3 +109,6 @@ temp/
 
 # Executable files
 *.exe
+
+# Local Netlify folder
+.netlify
