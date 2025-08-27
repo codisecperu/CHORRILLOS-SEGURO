@@ -14,7 +14,7 @@
 # Reglas de redirección para SPA y proxy de funciones
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  to = "https://chorrillos-seguro.onrender.com/:splat"
   status = 200
 
 [[redirects]]
