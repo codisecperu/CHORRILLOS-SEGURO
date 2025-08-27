@@ -1,52 +1,102 @@
-import fetch from "node-fetch";
-
-function extractLatLng(url) {
-  let match;
-
-  match = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-
-  match = url.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-
-  match = url.match(/\/dir\/[^/]*\/(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-
-  match = url.match(/[?&]query=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-
-  match = url.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
-
-  return { lat: null, lng: null };
-}
+import fetch from 'node-fetch';
 
 export async function handler(event) {
+  const { url } = event.queryStringParameters;
+
+  if (!url) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'URL parameter is required' }),
+    };
+  }
+
   try {
-    const { url } = JSON.parse(event.body);
+    const response = await fetch(url, { redirect: 'follow' });
+    const text = await response.text();
+    import fetch from 'node-fetch';
 
-    if (!url) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Falta el parámetro url" }),
-      };
+export async function handler(event) {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
+    };
+  }
+
+  let body;
+  try {
+    body = JSON.parse(event.body);
+  } catch (e) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Invalid JSON body' }),
+    };
+  }
+
+  const { url } = body;
+
+  if (!url) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'URL parameter is required in the body' }),
+    };
+  }
+
+  try {
+    const response = await fetch(url, { redirect: 'follow' });
+    const finalUrl = response.url;
+
+    let lat = null;
+    let lng = null;
+    const coordRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = finalUrl.match(coordRegex);
+
+    if (match && match[1] && match[2]) {
+      lat = parseFloat(match[1]);
+      lng = parseFloat(match[2]);
     }
-
-    // Resolver shortlinks
-    const response = await fetch(url, { redirect: "manual" });
-    const location = response.headers.get("location") || url;
-
-    // Extraer coordenadas
-    const { lat, lng } = extractLatLng(location);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ resolvedUrl: location, lat, lng }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ resolvedUrl: finalUrl, lat, lng }),
     };
-  } catch (err) {
+
+  } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: 'Failed to resolve URL', details: error.message }),
+    };
+  }
+}
+    const match = text.match(regex);
+
+    if (match && match[1]) {
+      const decodedUrl = decodeURIComponent(match[1]);
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resolvedUrl: decodedUrl }),
+      };
+    } else {
+        // fallback to response.url if regex fails
+        const finalUrl = response.url;
+        return {
+            statusCode: 200,
+            headers: {
+            'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ resolvedUrl: finalUrl }),
+        };
+    }
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to resolve URL', details: error.message }),
     };
   }
 }

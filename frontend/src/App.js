@@ -21,6 +21,7 @@ import MapaInteractivo from './components/pages/MapaInteractivo';
 import CentroAyuda from './components/pages/CentroAyuda';
 import PanelAdmin from './components/pages/PanelAdmin';
 import SistemaNotificaciones from './components/pages/SistemaNotificaciones';
+import CoordinateExtractor from './components/pages/CoordinateExtractor';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/centro-ayuda" element={<CentroAyuda />} />
+              <Route path="/coordinate-extractor" element={<CoordinateExtractor />} />
               
               {/* Rutas protegidas - Solo usuarios autenticados */}
               <Route 
