@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CameraIcon, MapPinIcon, UserIcon, DevicePhoneMobileIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, UserIcon, DevicePhoneMobileIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { extractCoordinatesFromGoogleMaps, isValidGoogleMapsUrl, getAddressFromCoordinates } from '../../utils/coordinateExtractor';
 
 const EmpadronamientoCamaras = () => {
