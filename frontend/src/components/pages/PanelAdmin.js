@@ -47,7 +47,7 @@ const PanelAdmin = () => {
     // Tu fetch original a la API del backend.
     // NOTA: Esto solo funcionará si tu backend en localhost:5000 está corriendo.
     // Para producción, necesitarás desplegar también tu backend y usar su URL pública aquí.
-    fetch('http://localhost:5000/api/stats')
+    fetch('/api/stats')
       .then(r => r.json())
       .then(data => setEstadisticas(prev => ({ ...prev, totalCamaras: data.cameras, totalVigilantes: data.vigilantes })))
       .catch(err => console.error('Error fetching stats from localhost', err));

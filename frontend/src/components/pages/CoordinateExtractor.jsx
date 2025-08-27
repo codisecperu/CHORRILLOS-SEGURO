@@ -22,35 +22,33 @@ const CoordinateExtractor = () => {
     setLoading(true);
     setError('');
     setSuccessMessage('');
-    // setCoordinates(null);
 
-    let finalUrl = url;
+    try {
+      // Always use the Netlify function to handle all types of URLs
+      const response = await fetch('/.netlify/functions/resolveUrl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
 
-    if (url.includes('maps.app.goo.gl')) {
-      try {
-        const response = await fetch(`/.netlify/functions/resolveUrl?url=${encodeURIComponent(url)}`);
-        if (!response.ok) {
-          throw new Error('Failed to resolve the shortened URL.');
-        }
-        const data = await response.json();
-        finalUrl = data.resolvedUrl;
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-        return;
+      if (!response.ok) {
+        throw new Error('Failed to process the URL.');
       }
+
+      const data = await response.json();
+
+      if (data.lat && data.lng) {
+        setSuccessMessage(`Coordenadas extraídas: ${data.lat}, ${data.lng}`);
+      } else {
+        setError('No se pudieron extraer las coordenadas del enlace.');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    const coords = extractCoordinates(finalUrl);
-
-    if (coords) {
-      // setCoordinates(coords);
-      setSuccessMessage('Enlace válido. Coordenadas extraídas correctamente.');
-    } else {
-      setError('Could not extract coordinates from the URL.');
-    }
-
-    setLoading(false);
   };
 
   return (

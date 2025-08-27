@@ -90,117 +90,62 @@ const MapStats = ({ data, filters }) => {
   const { cameraStatus, incidentSeverity } = getStatusBreakdown();
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center">
           <ChartBarIcon className="h-5 w-5 mr-2 text-blue-600" />
-          Estadísticas del Mapa
+          Estadísticas
         </h3>
-        <span className="text-sm text-gray-500">
-          Actualizado: {new Date().toLocaleTimeString()}
+        <span className="text-xs text-gray-500">
+          {new Date().toLocaleTimeString()}
         </span>
       </div>
 
-      {/* Estadísticas principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-4">
         {stats.map((stat) => (
-          <div key={stat.name} className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+          <div key={stat.name} className={`${stat.bgColor} rounded-lg p-3`}>
+            <div className="flex flex-col items-start">
+                <div className={`p-2 rounded-full mb-2 ${stat.bgColor}`}>
+                    <stat.icon className={`h-5 w-5 ${stat.textColor}`} />
+                </div>
+                <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-xs font-medium text-gray-600 truncate">{stat.name}</p>
                 {stat.total > 0 && (
                   <p className="text-xs text-gray-500">
-                    de {stat.total} total
+                    de {stat.total}
                   </p>
                 )}
-              </div>
-              <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                <stat.icon className={`h-6 w-6 ${stat.textColor}`} />
-              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Desglose detallado */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Estado de las cámaras */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">Estado de las Cámaras</h4>
+      {/* Detailed Breakdown */}
+      <div className="space-y-4">
+        {/* Camera Status */}
+        <div className="bg-gray-50 rounded-lg p-3">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Estado de Cámaras</h4>
           <div className="space-y-2">
             {Object.entries(cameraStatus).map(([status, count]) => (
-              <div key={status} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 capitalize">{status}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        status === 'active' ? 'bg-green-500' :
-                        status === 'maintenance' ? 'bg-yellow-500' :
-                        'bg-red-500'
-                      }`}
-                      style={{ width: `${(count / cameras.length) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 w-8 text-right">
-                    {count}
-                  </span>
-                </div>
+              <div key={status} className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 capitalize">{status}</span>
+                <span className="font-medium text-gray-900">{count}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Severidad de incidentes */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-900 mb-3">Severidad de Incidentes</h4>
+        {/* Incident Severity */}
+        <div className="bg-gray-50 rounded-lg p-3">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Severidad de Incidentes</h4>
           <div className="space-y-2">
             {Object.entries(incidentSeverity).map(([severity, count]) => (
-              <div key={severity} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600 capitalize">{severity}</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        severity === 'high' ? 'bg-red-500' :
-                        severity === 'medium' ? 'bg-yellow-500' :
-                        'bg-green-500'
-                      }`}
-                      style={{ width: `${(count / incidents.length) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 w-8 text-right">
-                    {count}
-                  </span>
-                </div>
+              <div key={severity} className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 capitalize">{severity}</span>
+                <span className="font-medium text-gray-900">{count}</span>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Resumen de cobertura */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <h4 className="text-sm font-medium text-gray-900 mb-3">Resumen de Cobertura</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {cameras.length}
-            </div>
-            <div className="text-sm text-gray-600">Dispositivos de Seguridad</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">
-              {vigilantes.length}
-            </div>
-            <div className="text-sm text-gray-600">Personal de Vigilancia</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">
-              {incidents.length}
-            </div>
-            <div className="text-sm text-gray-600">Incidentes Registrados</div>
           </div>
         </div>
       </div>

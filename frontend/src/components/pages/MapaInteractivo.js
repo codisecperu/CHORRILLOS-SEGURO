@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import MapStats from '../map/MapStats';
 import 'leaflet/dist/leaflet.css';
+import { extractCoordinatesFromGoogleMaps } from '../../utils/coordinateExtractor';
 
 // Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -54,6 +55,9 @@ const MapaInteractivo = () => {
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [mapCenter] = useState({ lat: -12.0464, lng: -77.0428 }); // Chorrillos, Lima
   const [mapZoom] = useState(14);
+  const [gmapsUrl, setGmapsUrl] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState('');
   
   const mapRef = useRef();
 
@@ -188,6 +192,46 @@ const MapaInteractivo = () => {
   const handleSearch = (query) => {
     setSearchQuery(query);
     // Aquí implementaríamos la búsqueda real por dirección
+  };
+
+  const handleAddFromUrl = async () => {
+    setIsExtracting(true);
+    setExtractionError('');
+
+    try {
+      const result = await extractCoordinatesFromGoogleMaps(gmapsUrl);
+      if (result && result.lat && result.lng) {
+        const { lat, lng } = result;
+        const newCamera = {
+          id: `temp-${Date.now()}`,
+          type: 'custom',
+          brand: 'Ubicación Añadida',
+          model: gmapsUrl,
+          location: { lat, lng },
+          address: result.resolvedUrl,
+          sector: 'personalizado',
+          status: 'active',
+          owner: 'Usuario',
+        };
+
+        setMapData(prev => ({
+          ...prev,
+          cameras: [...prev.cameras, newCamera]
+        }));
+
+        if (mapRef.current) {
+          mapRef.current.flyTo([lat, lng], 16);
+        }
+
+        setGmapsUrl('');
+      } else {
+        setExtractionError('No se pudieron extraer las coordenadas.');
+      }
+    } catch (error) {
+      setExtractionError('Error al procesar la URL.');
+    } finally {
+      setIsExtracting(false);
+    }
   };
 
   const getFilteredData = () => {
@@ -401,6 +445,28 @@ const MapaInteractivo = () => {
               />
               <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
+          </div>
+
+          {/* Add from URL */}
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Añadir desde URL de Google Maps</h3>
+            <div className="flex space-x-2">
+              <input
+                type="url"
+                placeholder="Pegar URL..."
+                value={gmapsUrl}
+                onChange={(e) => setGmapsUrl(e.target.value)}
+                className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+              <button
+                onClick={handleAddFromUrl}
+                disabled={isExtracting || !gmapsUrl}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
+              >
+                {isExtracting ? '...' : 'Añadir'}
+              </button>
+            </div>
+            {extractionError && <p className="text-red-500 text-xs mt-2">{extractionError}</p>}
           </div>
 
           {/* Filtros */}
