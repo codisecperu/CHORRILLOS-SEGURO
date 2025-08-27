@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
 
 const CoordinateExtractor = () => {
   const [url, setUrl] = useState('');
-  const [coordinates, setCoordinates] = useState(null);
+  // const [coordinates, setCoordinates] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -22,7 +22,7 @@ const CoordinateExtractor = () => {
     setLoading(true);
     setError('');
     setSuccessMessage('');
-    setCoordinates(null);
+    // setCoordinates(null);
 
     let finalUrl = url;
 
@@ -44,7 +44,7 @@ const CoordinateExtractor = () => {
     const coords = extractCoordinates(finalUrl);
 
     if (coords) {
-      setCoordinates(coords);
+      // setCoordinates(coords);
       setSuccessMessage('Enlace válido. Coordenadas extraídas correctamente.');
     } else {
       setError('Could not extract coordinates from the URL.');
