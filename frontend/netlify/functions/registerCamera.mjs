@@ -3,7 +3,20 @@ import { createClient } from '@supabase/supabase-js';
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Las variables de entorno SUPABASE_URL y SUPABASE_ANON_KEY son requeridas');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+  db: {
+    schema: 'public'
+  }
+});
 
 export async function handler(event) {
   // Enable CORS
@@ -63,10 +76,32 @@ export async function handler(event) {
       estado: 'pendiente'
     };
 
+    // Ajustar los nombres de campos para que coincidan con la base de datos
+    const dbCameraData = {
+      nombre_propietario: cameraData.nombrePropietario,
+      tipo_documento: cameraData.tipoDocumento,
+      numero_documento: cameraData.numeroDocumento,
+      telefono: cameraData.telefono,
+      email: cameraData.email,
+      tipo_camara: cameraData.tipoCamara,
+      modelo_camara: cameraData.modeloCamara,
+      marca_camara: cameraData.marcaCamara,
+      tiene_dvr: cameraData.tieneDVR,
+      zona_visibilidad: cameraData.zonaVisibilidad,
+      grabacion: cameraData.grabacion,
+      disposicion_compartir: cameraData.disposicionCompartir,
+      direccion: cameraData.direccion,
+      lat: cameraData.lat,
+      lng: cameraData.lng,
+      sector: cameraData.sector,
+      fecha_registro: new Date().toISOString(),
+      estado: 'pendiente'
+    };
+
     // Insert into Supabase
     const { data, error } = await supabase
       .from('camaras')
-      .insert([cameraData])
+      .insert([dbCameraData])
       .select();
 
     if (error) throw error;
