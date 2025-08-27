@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { extractCoordinates } from '../../utils/extractCoordinates';
 
 // Fix for default icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
