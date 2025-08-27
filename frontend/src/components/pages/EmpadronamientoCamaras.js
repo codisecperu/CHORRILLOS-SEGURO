@@ -163,21 +163,33 @@ const EmpadronamientoCamaras = () => {
     setIsSubmitting(true);
     
     try {
-      const data = new FormData();
-      for (const key in formData) {
-        if (key === 'coordenadas') {
-          data.append('lat', formData.coordenadas.lat);
-          data.append('lng', formData.coordenadas.lng);
-        } else if (key === 'imagenReferencial' && formData.imagenReferencial) {
-          data.append(key, formData.imagenReferencial);
-        } else {
-          data.append(key, formData[key]);
-        }
+      // Preparar los datos del formulario
+      const requestData = {
+        ...formData,
+        lat: formData.coordenadas.lat,
+        lng: formData.coordenadas.lng
+      };
+      
+      // Eliminar el campo coordenadas ya que enviamos lat y lng por separado
+      delete requestData.coordenadas;
+      
+      // Si hay imagen, la convertimos a base64
+      if (formData.imagenReferencial) {
+        const base64Image = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(formData.imagenReferencial);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+        });
+        requestData.imagenReferencial = base64Image;
       }
 
-      const response = await fetch('/api/cameras/register', {
+      const response = await fetch('/.netlify/functions/registerCamera', {
         method: 'POST',
-        body: data,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -188,6 +200,27 @@ const EmpadronamientoCamaras = () => {
       const result = await response.json();
       console.log('Registro exitoso:', result);
       alert('¡Registro exitoso! Su cámara ha sido empadronada.');
+      
+      // Limpiar el formulario después de un registro exitoso
+      setFormData({
+        nombrePropietario: '',
+        tipoDocumento: 'DNI',
+        numeroDocumento: '',
+        telefono: '',
+        email: '',
+        tipoCamara: 'domiciliaria',
+        modeloCamara: '',
+        marcaCamara: '',
+        tieneDVR: false,
+        zonaVisibilidad: '',
+        grabacion: false,
+        disposicionCompartir: false,
+        direccion: '',
+        coordenadas: { lat: '', lng: '' },
+        sector: '',
+        imagenReferencial: null
+      });
+      setStep(1);
       
     } catch (error) {
       console.error('Error al enviar:', error);
