@@ -175,7 +175,7 @@ const EmpadronamientoCamaras = () => {
         }
       }
 
-      const response = await fetch('http://localhost:5000/api/cameras/register', {
+      const response = await fetch('/api/cameras/register', {
         method: 'POST',
         body: data,
       });
@@ -588,13 +588,7 @@ const EmpadronamientoCamaras = () => {
       <div className="max-w-screen-md mx-auto px-4 sm:px-6 lg:px-8 lg:max-w-screen-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center items-center mb-4 space-x-4">
-            <img src="../../../../imagenes/logo_codisec.png" alt="Logo CODISEC" className="h-16" />
-            <div className="w-16 h-16 bg-codisec-blue rounded-full flex items-center justify-center">
-              <CameraIcon className="h-8 w-8 text-white" />
-            </div>
-            <img src="../../../../imagenes/logo_municipalidad.png" alt="Logo Municipalidad de Chorrillos" className="h-16" />
-          </div>
+          
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Empadronamiento de Cámaras
           </h1>
