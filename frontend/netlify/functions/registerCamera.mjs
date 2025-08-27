@@ -76,26 +76,27 @@ export async function handler(event) {
       estado: 'pendiente'
     };
 
-    // Ajustar los nombres de campos para que coincidan con la base de datos
+    // Ajustar los nombres de campos y tipos de datos para que coincidan con la base de datos
     const dbCameraData = {
-      nombre_propietario: cameraData.nombrePropietario,
-      tipo_documento: cameraData.tipoDocumento,
-      numero_documento: cameraData.numeroDocumento,
-      telefono: cameraData.telefono,
-      email: cameraData.email,
-      tipo_camara: cameraData.tipoCamara,
-      modelo_camara: cameraData.modeloCamara,
-      marca_camara: cameraData.marcaCamara,
-      tiene_dvr: cameraData.tieneDVR,
-      zona_visibilidad: cameraData.zonaVisibilidad,
-      grabacion: cameraData.grabacion,
-      disposicion_compartir: cameraData.disposicionCompartir,
-      direccion: cameraData.direccion,
-      lat: cameraData.lat,
-      lng: cameraData.lng,
-      sector: cameraData.sector,
+      nombre_propietario: String(cameraData.nombrePropietario || ''),
+      tipo_documento: String(cameraData.tipoDocumento || 'DNI'),
+      numero_documento: String(cameraData.numeroDocumento || ''),
+      telefono: String(cameraData.telefono || ''),
+      email: cameraData.email ? String(cameraData.email) : null,
+      tipo_camara: String(cameraData.tipoCamara || 'domiciliaria'),
+      modelo_camara: cameraData.modeloCamara ? String(cameraData.modeloCamara) : null,
+      marca_camara: String(cameraData.marcaCamara || ''),
+      tiene_dvr: Boolean(cameraData.tieneDVR),
+      zona_visibilidad: String(cameraData.zonaVisibilidad || ''),
+      grabacion: Boolean(cameraData.grabacion),
+      disposicion_compartir: Boolean(cameraData.disposicionCompartir),
+      direccion: String(cameraData.direccion || ''),
+      lat: String(cameraData.lat || '0'),
+      lng: String(cameraData.lng || '0'),
+      sector: String(cameraData.sector || 'otros'),
       fecha_registro: new Date().toISOString(),
-      estado: 'pendiente'
+      estado: 'pendiente',
+      imagen_referencial: cameraData.imagenReferencial || null
     };
 
     // Insert into Supabase
