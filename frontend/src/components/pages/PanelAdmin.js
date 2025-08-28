@@ -25,7 +25,7 @@ const PanelAdmin = () => {
     fechaHasta: ''
   });
 
-  const [estadisticas, setEstadisticas] = useState({
+  const [estadisticas] = useState({
     totalCamaras: 0,
     totalVigilantes: 0,
     camarasActivas: 0,
