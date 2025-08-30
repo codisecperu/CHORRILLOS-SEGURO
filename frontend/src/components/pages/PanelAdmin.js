@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { 
   ChartBarIcon, 
   UsersIcon, 
@@ -14,6 +15,8 @@ import {
 
 const PanelAdmin = () => {
   const [tabActiva, setTabActiva] = useState('dashboard');
+  const [registros, setRegistros] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [filtrosExportacion, setFiltrosExportacion] = useState({
     tipo: 'todos',
     sector: 'todos',
@@ -34,51 +37,39 @@ const PanelAdmin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Llama a tu función de Netlify usando una ruta relativa.
-    // Esto funciona tanto en desarrollo (con netlify dev) como en producción.
-    fetch('/.netlify/functions/hello-world')
-      .then(response => response.text()) // La función hello-world devuelve texto, no JSON
-      .then(data => {
-        console.log('Respuesta de la función hello-world:', data);
-        // Aquí podrías, por ejemplo, mostrar el mensaje en algún lugar
-      })
-      .catch(err => console.error('Error al llamar la función de Netlify', err));
+    const fetchData = async () => {
+      setIsLoading(true);
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-    // Tu fetch original a la API del backend.
-    // NOTA: Esto solo funcionará si tu backend en localhost:5000 está corriendo.
-    // Para producción, necesitarás desplegar también tu backend y usar su URL pública aquí.
-    fetch('/api/stats')
-      .then(r => r.json())
-      .then(data => setEstadisticas(prev => ({ ...prev, totalCamaras: data.cameras, totalVigilantes: data.vigilantes })))
-      .catch(err => console.error('Error fetching stats from localhost', err));
+      if (!supabaseUrl || !supabaseKey) {
+        console.error("Supabase URL and anon key are required.");
+        setIsLoading(false);
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      // Fetch pending cameras
+      const { data: cameras, error: camerasError } = await supabase
+        .from('camaras')
+        .select('*')
+        .eq('estado', 'pendiente');
+
+      // TODO: Fetch pending vigilantes as well
+
+      if (camerasError) {
+        console.error('Error fetching pending cameras:', camerasError);
+      } else {
+        const pendingRegistrations = cameras.map(camera => ({...camera, tipo: 'camara'}));
+        setRegistros(pendingRegistrations);
+      }
+
+      setIsLoading(false);
+    };
+
+    fetchData();
   }, []);
-
-  const registrosPendientes = [
-    {
-      id: 1,
-      tipo: 'camara',
-      nombre: 'Cámara Residencial Jr. Lima 150',
-      propietario: 'María González',
-      fechaRegistro: '2025-01-20',
-      estado: 'pendiente'
-    },
-    {
-      id: 2,
-      tipo: 'vigilante',
-      nombre: 'Roberto Silva',
-      organizacion: 'Comité de Seguridad',
-      fechaRegistro: '2025-01-19',
-      estado: 'pendiente'
-    },
-    {
-      id: 3,
-      tipo: 'camara',
-      nombre: 'Cámara Comercial Av. Defensores 200',
-      propietario: 'Centro Comercial Plaza',
-      fechaRegistro: '2025-01-18',
-      estado: 'pendiente'
-    }
-  ];
 
   const solicitudesImagenes = [
     {
@@ -234,7 +225,9 @@ const PanelAdmin = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {registrosPendientes.map((registro) => (
+            {isLoading ? (
+              <tr><td colSpan="5" className="text-center py-4">Cargando...</td></tr>
+            ) : registros.map((registro) => (
               <tr key={registro.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -247,13 +240,13 @@ const PanelAdmin = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {registro.nombre}
+                  {registro.direccion || registro.nombre}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {registro.propietario || registro.organizacion}
+                  {registro.nombre_propietario || registro.organizacion}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {registro.fechaRegistro}
+                  {new Date(registro.fecha_registro).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
