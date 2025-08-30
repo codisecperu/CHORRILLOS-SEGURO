@@ -66,11 +66,11 @@ const MapaInteractivo = () => {
     const loadMapData = async () => {
       setIsLoading(true);
 
-      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
       if (!supabaseUrl || !supabaseKey) {
-        console.error("Supabase URL and anon key are required. Make sure to set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY in your .env file.");
+        console.error("Supabase URL and anon key are required. Make sure to set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file.");
         setIsLoading(false);
         return;
       }
