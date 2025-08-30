@@ -41,8 +41,8 @@ const PanelAdmin = () => {
 
   const navigate = useNavigate();
 
-  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-  const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   const fetchData = useCallback(async () => {
@@ -120,7 +120,7 @@ const PanelAdmin = () => {
     setSelectedRegistro(null);
   };
 
-  const handleExportKML = async () => {
+  const handleExport = async (format) => {
     let query = supabase.from('camaras').select('*');
 
     if (filtrosExportacion.tipo !== 'todos') {
@@ -146,11 +146,16 @@ const PanelAdmin = () => {
     const { data: cameras, error } = await query;
 
     if (error) {
-      console.error('Error fetching data for KML export:', error);
+      console.error(`Error fetching data for ${format} export:`, error);
       return;
     }
 
-    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+    let content = '';
+    let mimeType = '';
+    let fileExtension = '';
+
+    if (format === 'kml') {
+      content = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     ${cameras.map(camera => `
@@ -171,12 +176,27 @@ const PanelAdmin = () => {
     `).join('')}
   </Document>
 </kml>`;
+      mimeType = 'application/vnd.google-earth.kml+xml';
+      fileExtension = 'kml';
+    } else if (format === 'excel') {
+      // Basic CSV implementation for Excel
+      const header = Object.keys(cameras[0]).join(',') + '\n';
+      const body = cameras.map(camera => Object.values(camera).join(',')).join('\n');
+      content = header + body;
+      mimeType = 'text/csv';
+      fileExtension = 'csv';
+    } else if (format === 'pdf') {
+      // This is a placeholder for PDF export, as it requires a library like jsPDF
+      content = 'PDF export is not yet implemented.';
+      mimeType = 'text/plain';
+      fileExtension = 'txt';
+    }
 
-    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'camaras.kml';
+    a.download = `camaras.${fileExtension}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -404,7 +424,7 @@ const PanelAdmin = () => {
     <div className="card">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-gray-900">Solicitudes de Imágenes</h3>
-        <button className="btn-primary" onClick={() => console.log('Botón de filtros de solicitudes presionado')}>
+        <button className="btn-primary" onClick={() => console.log('Botón de filtros de solicitudes presionado')}> 
           <FunnelIcon className="h-4 w-4 mr-2" />
           Filtros
         </button>
@@ -432,7 +452,7 @@ const PanelAdmin = () => {
                 </div>
               </div>
               <div className="ml-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${ 
                   solicitud.estado === 'pendiente' 
                     ? 'bg-yellow-100 text-yellow-800' 
                     : 'bg-green-100 text-green-800'
@@ -527,7 +547,7 @@ const PanelAdmin = () => {
           </div>
 
           <div className="flex items-end">
-            <button className="btn-primary w-full" onClick={handleExportKML}>
+            <button className="btn-primary w-full" onClick={() => handleExport('kml')}> 
               <FunnelIcon className="h-4 w-4 mr-2" />
               Aplicar Filtros
             </button>
@@ -545,7 +565,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Archivo compatible con Google Earth y sistemas SIG
             </p>
-            <button className="btn-primary w-full" onClick={handleExportKML}>
+            <button className="btn-primary w-full" onClick={() => handleExport('kml')}> 
               Descargar KML
             </button>
           </div>
@@ -556,7 +576,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Reporte detallado en formato de hoja de cálculo
             </p>
-            <button className="btn-secondary w-full" onClick={() => console.log('Botón de descargar Excel presionado')}>
+            <button className="btn-secondary w-full" onClick={() => handleExport('excel')}> 
               Descargar Excel
             </button>
           </div>
@@ -567,7 +587,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Reporte formal para documentación oficial
             </p>
-            <button className="btn-outline w-full" onClick={() => console.log('Botón de descargar PDF presionado')}>
+            <button className="btn-outline w-full" onClick={() => handleExport('pdf')}> 
               Descargar PDF
             </button>
           </div>
@@ -621,7 +641,7 @@ const PanelAdmin = () => {
               <button
                 key={tab.id}
                 onClick={() => setTabActiva(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${ 
                   tabActiva === tab.id
                     ? 'border-chorrillos-blue text-chorrillos-blue'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
