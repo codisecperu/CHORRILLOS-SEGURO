@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 // import { useAuth } from '../../contexts/AuthContext';
@@ -61,121 +62,49 @@ const MapaInteractivo = () => {
   
   const mapRef = useRef();
 
-  // Datos mock para desarrollo
   useEffect(() => {
     const loadMapData = async () => {
       setIsLoading(true);
-      
-      // Simular carga de datos
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockData = {
-        cameras: [
-          {
-            id: 1,
-            type: 'residential',
-            brand: 'Hikvision',
-            model: 'DS-2CD2142FWD-I',
-            location: { lat: -12.0464, lng: -77.0428 },
-            address: 'Av. Defensores del Morro 123',
-            sector: 'centro',
-            status: 'active',
-            owner: 'Juan Pérez',
-            phone: '999-999-999',
-            recording: true,
-            sharing: true,
-            lastMaintenance: '2024-01-15'
-          },
-          {
-            id: 2,
-            type: 'commercial',
-            brand: 'Dahua',
-            model: 'IPC-HDW4431C-A',
-            location: { lat: -12.0480, lng: -77.0440 },
-            address: 'Av. San Martín 456',
-            sector: 'comercial',
-            status: 'active',
-            owner: 'Comercial ABC',
-            phone: '888-888-888',
-            recording: true,
-            sharing: false,
-            lastMaintenance: '2024-02-01'
-          },
-          {
-            id: 3,
-            type: 'residential',
-            brand: 'Hikvision',
-            model: 'DS-2CD2342WD-I',
-            location: { lat: -12.0440, lng: -77.0400 },
-            address: 'Jr. Los Pinos 789',
-            sector: 'residencial',
-            status: 'maintenance',
-            owner: 'María García',
-            phone: '777-777-777',
-            recording: false,
-            sharing: true,
-            lastMaintenance: '2024-03-10'
-          }
-        ],
-        vigilantes: [
-          {
-            id: 1,
-            name: 'Carlos Rodríguez',
-            organization: 'Seguridad Privada XYZ',
-            location: { lat: -12.0470, lng: -77.0430 },
-            address: 'Av. Defensores del Morro 150',
-            sector: 'centro',
-            status: 'active',
-            schedule: '06:00 - 18:00',
-            experience: '5 años',
-            phone: '666-666-666',
-            lastPatrol: '2024-03-15 14:30'
-          },
-          {
-            id: 2,
-            name: 'Ana López',
-            organization: 'Vigilancia Comunal',
-            location: { lat: -12.0450, lng: -77.0410 },
-            address: 'Jr. Los Pinos 800',
-            sector: 'residencial',
-            status: 'active',
-            schedule: '18:00 - 06:00',
-            experience: '3 años',
-            phone: '555-555-555',
-            lastPatrol: '2024-03-15 15:45'
-          }
-        ],
-        incidents: [
-          {
-            id: 1,
-            type: 'theft',
-            location: { lat: -12.0465, lng: -77.0425 },
-            address: 'Av. Defensores del Morro 125',
-            sector: 'centro',
-            date: '2024-03-15 10:30',
-            description: 'Robo de vehículo estacionado',
-            severity: 'high',
-            status: 'investigating',
-            reportedBy: 'Juan Pérez',
-            cameraId: 1
-          },
-          {
-            id: 2,
-            type: 'vandalism',
-            location: { lat: -12.0475, lng: -77.0435 },
-            address: 'Av. San Martín 460',
-            sector: 'comercial',
-            date: '2024-03-14 22:15',
-            description: 'Grafiti en pared comercial',
-            severity: 'low',
-            status: 'resolved',
-            reportedBy: 'Comercial ABC',
-            cameraId: 2
-          }
-        ]
-      };
-      
-      setMapData(mockData);
+
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        console.error("Supabase URL and anon key are required. Make sure to set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY in your .env file.");
+        setIsLoading(false);
+        return;
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data, error } = await supabase
+        .from('camaras')
+        .select('*')
+        .eq('estado', 'aprobado');
+
+      if (error) {
+        console.error("Error fetching camera data:", error);
+        setMapData({ cameras: [], vigilantes: [], incidents: [] });
+      } else {
+        const formattedCameras = data.map(camera => ({
+          id: camera.id,
+          type: camera.tipo_camara,
+          brand: camera.marca_camara,
+          model: camera.modelo_camara,
+          location: { lat: parseFloat(camera.lat), lng: parseFloat(camera.lng) },
+          address: camera.direccion,
+          sector: camera.sector,
+          status: camera.estado,
+          owner: camera.nombre_propietario,
+          phone: camera.telefono,
+          recording: camera.grabacion,
+          sharing: camera.disposicion_compartir,
+          lastMaintenance: null // No equivalent in DB
+        }));
+        // TODO: Fetch vigilantes and incidents as well
+        setMapData({ cameras: formattedCameras, vigilantes: [], incidents: [] });
+      }
+
       setIsLoading(false);
     };
     
