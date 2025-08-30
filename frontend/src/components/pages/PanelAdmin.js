@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { 
@@ -12,11 +12,16 @@ import {
   XMarkIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
+import RegistroModal from './RegistroModal';
 
 const PanelAdmin = () => {
   const [tabActiva, setTabActiva] = useState('dashboard');
   const [registros, setRegistros] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedRegistro, setSelectedRegistro] = useState(null);
+  const [filtroSector, setFiltroSector] = useState('todos');
+  const [filtroTipoCamara, setFiltroTipoCamara] = useState('todos');
+  const [filtroEstado, setFiltroEstado] = useState('pendiente');
   const [filtrosExportacion, setFiltrosExportacion] = useState({
     tipo: 'todos',
     sector: 'todos',
@@ -36,40 +41,150 @@ const PanelAdmin = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-      const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+  const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-      if (!supabaseUrl || !supabaseKey) {
-        console.error("Supabase URL and anon key are required.");
-        setIsLoading(false);
-        return;
-      }
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
 
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      // Fetch pending cameras
-      const { data: cameras, error: camerasError } = await supabase
-        .from('camaras')
-        .select('*')
-        .eq('estado', 'pendiente');
-
-      // TODO: Fetch pending vigilantes as well
-
-      if (camerasError) {
-        console.error('Error fetching pending cameras:', camerasError);
-      } else {
-        const pendingRegistrations = cameras.map(camera => ({...camera, tipo: 'camara'}));
-        setRegistros(pendingRegistrations);
-      }
-
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Supabase URL and anon key are required.");
       setIsLoading(false);
-    };
+      return;
+    }
 
+    let query = supabase.from('camaras').select('*');
+
+    if (filtroSector !== 'todos') {
+      query = query.eq('sector', filtroSector);
+    }
+
+    if (filtroTipoCamara !== 'todos') {
+      query = query.eq('tipo_camara', filtroTipoCamara);
+    }
+
+    if (filtroEstado !== 'todos') {
+      query = query.eq('estado', filtroEstado);
+    }
+
+    const { data: cameras, error: camerasError } = await query;
+
+    // TODO: Fetch pending vigilantes as well
+
+    if (camerasError) {
+      console.error('Error fetching pending cameras:', camerasError);
+    } else {
+      const pendingRegistrations = cameras.map(camera => ({...camera, tipo: 'camara'}));
+      setRegistros(pendingRegistrations);
+    }
+
+    setIsLoading(false);
+  }, [supabase, supabaseUrl, supabaseKey, filtroSector, filtroTipoCamara, filtroEstado]);
+
+  useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const handleApprove = async (id) => {
+    const { error } = await supabase
+      .from('camaras')
+      .update({ estado: 'aprobado' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error approving registration:', error);
+    } else {
+      fetchData(); // Refresh the list
+    }
+  };
+
+  const handleReject = async (id) => {
+    const { error } = await supabase
+      .from('camaras')
+      .update({ estado: 'rechazado' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error rejecting registration:', error);
+    } else {
+      fetchData(); // Refresh the list
+    }
+  };
+
+  const handleView = (registro) => {
+    setSelectedRegistro(registro);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedRegistro(null);
+  };
+
+  const handleExportKML = async () => {
+    let query = supabase.from('camaras').select('*');
+
+    if (filtrosExportacion.tipo !== 'todos') {
+      query = query.eq('tipo_camara', filtrosExportacion.tipo);
+    }
+
+    if (filtrosExportacion.sector !== 'todos') {
+      query = query.eq('sector', filtrosExportacion.sector);
+    }
+
+    if (filtrosExportacion.estado !== 'todos') {
+      query = query.eq('estado', filtrosExportacion.estado);
+    }
+
+    if (filtrosExportacion.fechaDesde) {
+      query = query.gte('fecha_registro', filtrosExportacion.fechaDesde);
+    }
+
+    if (filtrosExportacion.fechaHasta) {
+      query = query.lte('fecha_registro', filtrosExportacion.fechaHasta);
+    }
+
+    const { data: cameras, error } = await query;
+
+    if (error) {
+      console.error('Error fetching data for KML export:', error);
+      return;
+    }
+
+    const kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    ${cameras.map(camera => `
+      <Placemark>
+        <name>${camera.nombre_propietario}</name>
+        <description>
+          <![CDATA[
+            <b>Tipo de Cámara:</b> ${camera.tipo_camara}<br/>
+            <b>Dirección:</b> ${camera.direccion}<br/>
+            <b>Sector:</b> ${camera.sector}<br/>
+            <b>Estado:</b> ${camera.estado}
+          ]]>
+        </description>
+        <Point>
+          <coordinates>${camera.lng},${camera.lat},0</coordinates>
+        </Point>
+      </Placemark>
+    `).join('')}
+  </Document>
+</kml>`;
+
+    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'camaras.kml';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   const solicitudesImagenes = [
     {
@@ -197,10 +312,26 @@ const PanelAdmin = () => {
     <div className="card">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-gray-900">Registros Pendientes de Validación</h3>
-        <button className="btn-primary">
-          <FunnelIcon className="h-4 w-4 mr-2" />
-          Filtros
-        </button>
+        <div className="flex items-center space-x-4">
+          <select value={filtroSector} onChange={(e) => setFiltroSector(e.target.value)} className="form-input">
+            <option value="todos">Todos los sectores</option>
+            <option value="VILLA">VILLA</option>
+            <option value="CENTRO">CENTRO</option>
+            <option value="SAN GENARO">SAN GENARO</option>
+            <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
+          </select>
+          <select value={filtroTipoCamara} onChange={(e) => setFiltroTipoCamara(e.target.value)} className="form-input">
+            <option value="todos">Todos los tipos</option>
+            <option value="domiciliaria">Domiciliaria</option>
+            <option value="comercial">Comercial</option>
+          </select>
+          <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="form-input">
+            <option value="todos">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="rechazado">Rechazado</option>
+          </select>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -250,13 +381,13 @@ const PanelAdmin = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div className="flex space-x-2">
-                    <button className="text-chorrillos-blue hover:text-chorrillos-dark">
+                    <button className="text-chorrillos-blue hover:text-chorrillos-dark" onClick={() => handleView(registro)}>
                       <EyeIcon className="h-4 w-4" />
                     </button>
-                    <button className="text-green-600 hover:text-green-900">
+                    <button className="text-green-600 hover:text-green-900" onClick={() => handleApprove(registro.id)}>
                       <CheckIcon className="h-4 w-4" />
                     </button>
-                    <button className="text-red-600 hover:text-red-900">
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleReject(registro.id)}>
                       <XMarkIcon className="h-4 w-4" />
                     </button>
                   </div>
@@ -273,7 +404,7 @@ const PanelAdmin = () => {
     <div className="card">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-semibold text-gray-900">Solicitudes de Imágenes</h3>
-        <button className="btn-primary">
+        <button className="btn-primary" onClick={() => console.log('Botón de filtros de solicitudes presionado')}>
           <FunnelIcon className="h-4 w-4 mr-2" />
           Filtros
         </button>
@@ -311,13 +442,13 @@ const PanelAdmin = () => {
               </div>
             </div>
             <div className="mt-4 flex space-x-2">
-              <button className="btn-primary text-sm">
+              <button className="btn-primary text-sm" onClick={() => console.log('Botón de aprobar solicitud presionado para la solicitud:', solicitud.id)}>
                 Aprobar Solicitud
               </button>
-              <button className="btn-outline text-sm">
+              <button className="btn-outline text-sm" onClick={() => console.log('Botón de rechazar solicitud presionado para la solicitud:', solicitud.id)}>
                 Rechazar
               </button>
-              <button className="btn-outline text-sm">
+              <button className="btn-outline text-sm" onClick={() => console.log('Botón de solicitar más información presionado para la solicitud:', solicitud.id)}>
                 Solicitar Más Información
               </button>
             </div>
@@ -354,12 +485,10 @@ const PanelAdmin = () => {
               className="form-input"
             >
               <option value="todos">Todos los sectores</option>
-              <option value="centro">Centro</option>
-              <option value="playa">Playa</option>
-              <option value="morro">Morro</option>
-              <option value="pampilla">Pampilla</option>
-              <option value="villa">Villa</option>
-              <option value="chavez">Chavez</option>
+              <option value="VILLA">VILLA</option>
+              <option value="CENTRO">CENTRO</option>
+              <option value="SAN GENARO">SAN GENARO</option>
+              <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
             </select>
           </div>
 
@@ -398,7 +527,7 @@ const PanelAdmin = () => {
           </div>
 
           <div className="flex items-end">
-            <button className="btn-primary w-full">
+            <button className="btn-primary w-full" onClick={handleExportKML}>
               <FunnelIcon className="h-4 w-4 mr-2" />
               Aplicar Filtros
             </button>
@@ -416,7 +545,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Archivo compatible con Google Earth y sistemas SIG
             </p>
-            <button className="btn-primary w-full">
+            <button className="btn-primary w-full" onClick={handleExportKML}>
               Descargar KML
             </button>
           </div>
@@ -427,7 +556,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Reporte detallado en formato de hoja de cálculo
             </p>
-            <button className="btn-secondary w-full">
+            <button className="btn-secondary w-full" onClick={() => console.log('Botón de descargar Excel presionado')}>
               Descargar Excel
             </button>
           </div>
@@ -438,7 +567,7 @@ const PanelAdmin = () => {
             <p className="text-sm text-gray-600 mb-3">
               Reporte formal para documentación oficial
             </p>
-            <button className="btn-outline w-full">
+            <button className="btn-outline w-full" onClick={() => console.log('Botón de descargar PDF presionado')}>
               Descargar PDF
             </button>
           </div>
@@ -476,7 +605,9 @@ const PanelAdmin = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-500">Usuario: Admin</span>
-              <button className="btn-outline text-sm">Cerrar Sesión</button>
+              <button className="btn-outline text-sm" onClick={handleSignOut}>
+                Cerrar Sesión
+              </button>
             </div>
           </div>
         </div>
@@ -511,6 +642,8 @@ const PanelAdmin = () => {
         {tabActiva === 'solicitudes' && renderSolicitudesImagenes()}
         {tabActiva === 'exportacion' && renderExportacionKML()}
       </div>
+
+      <RegistroModal registro={selectedRegistro} onClose={handleCloseModal} />
     </div>
   );
 };
