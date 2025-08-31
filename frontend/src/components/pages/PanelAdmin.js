@@ -235,7 +235,7 @@ const PanelAdmin = () => {
           <h3 className="text-2xl font-bold text-gray-900 mb-1">{estadisticas.totalCamaras}</h3>
           <p className="text-gray-600">Total de Cámaras</p>
           <div className="mt-3">
-            <button onClick={() => navigate('/admin/camaras')} className="btn-primary text-sm">Ver Cámaras</button>
+            <button onClick={() => setTabActiva('registros')} className="btn-primary text-sm">Ver Cámaras</button>
           </div>
         </div>
 
@@ -248,7 +248,7 @@ const PanelAdmin = () => {
           <h3 className="text-2xl font-bold text-gray-900 mb-1">{estadisticas.totalVigilantes}</h3>
           <p className="text-gray-600">Total de Vigilantes</p>
           <div className="mt-3">
-            <button onClick={() => navigate('/admin/vigilantes')} className="btn-primary text-sm">Ver Vigilantes</button>
+            <button onClick={() => setTabActiva('registros')} className="btn-primary text-sm">Ver Vigilantes</button>
           </div>
         </div>
 
