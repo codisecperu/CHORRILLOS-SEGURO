@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../supabaseClient';
 import { 
   ChartBarIcon, 
   UsersIcon, 
@@ -41,18 +41,8 @@ const PanelAdmin = () => {
 
   const navigate = useNavigate();
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
   const fetchData = useCallback(async () => {
     setIsLoading(true);
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error("Supabase URL and anon key are required.");
-      setIsLoading(false);
-      return;
-    }
 
     let query = supabase.from('camaras').select('*');
 
@@ -80,7 +70,7 @@ const PanelAdmin = () => {
     }
 
     setIsLoading(false);
-  }, [supabase, supabaseUrl, supabaseKey, filtroSector, filtroTipoCamara, filtroEstado]);
+  }, [filtroSector, filtroTipoCamara, filtroEstado]);
 
   useEffect(() => {
     fetchData();
