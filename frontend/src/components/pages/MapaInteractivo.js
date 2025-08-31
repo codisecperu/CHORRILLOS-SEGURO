@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../supabaseClient';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 // import { useAuth } from '../../contexts/AuthContext';
@@ -65,17 +65,6 @@ const MapaInteractivo = () => {
   useEffect(() => {
     const loadMapData = async () => {
       setIsLoading(true);
-
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const supabaseKey = process.env.SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.error("Supabase URL and anon key are required. Make sure to set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file.");
-        setIsLoading(false);
-        return;
-      }
-
-      const supabase = createClient(supabaseUrl, supabaseKey);
 
       const { data, error } = await supabase
         .from('camaras')
