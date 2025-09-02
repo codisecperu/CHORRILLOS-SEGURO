@@ -93,7 +93,7 @@ export async function handler(event) {
       direccion: String(cameraData.direccion || ''),
       lat: String(cameraData.lat || '0'),
       lng: String(cameraData.lng || '0'),
-      sector: String(cameraData.sector || 'otros'),
+      sector: String(cameraData.sector),
       fecha_registro: new Date().toISOString(),
       estado: 'pendiente',
       imagen_referencial: cameraData.imagenReferencial || null

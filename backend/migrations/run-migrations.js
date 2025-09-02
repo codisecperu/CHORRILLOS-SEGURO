@@ -83,6 +83,27 @@ async function runMigrations() {
       );
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS solicitudes_imagenes (
+        id SERIAL PRIMARY KEY,
+        camara_id INTEGER REFERENCES cameras(id),
+        solicitante_id INTEGER REFERENCES users(id),
+        motivo TEXT NOT NULL,
+        estado VARCHAR(50) DEFAULT 'pendiente',
+        fecha_solicitud TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     console.log('Migrations completed successfully.');
   } catch (error) {
     console.error('Error running migrations:', error);
