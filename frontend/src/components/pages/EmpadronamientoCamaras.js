@@ -460,10 +460,10 @@ const EmpadronamientoCamaras = () => {
             className={`form-input ${errors.sector ? 'border-red-500' : ''}`}
           >
             <option value="">Seleccione el sector</option>
-            <option value="CENTRO">Centro</option>
-            <option value="VILLA">Villa</option>
-            <option value="MATEO PUMACAHUA">Mateo Pumacahua</option>
-            <option value="SAN GENARO">San Genaro</option>
+            <option value="centro">Centro</option>
+            <option value="villa">Villa</option>
+            <option value="mateo pumacahua">Mateo Pumacahua</option>
+            <option value="san genaro">San Genaro</option>
           </select>
           {errors.sector && (
             <p className="text-red-500 text-sm mt-1">{errors.sector}</p>
