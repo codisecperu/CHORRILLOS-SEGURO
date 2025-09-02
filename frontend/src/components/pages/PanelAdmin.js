@@ -55,16 +55,16 @@ const PanelAdmin = () => {
     if (allVigilantesError) console.error('Error fetching all vigilantes:', allVigilantesError);
 
     const sectors = {
-      'CENTRO': 0,
-      'VILLA': 0,
-      'SAN GENARO': 0,
-      'MATEO PUMACAHUA': 0
+      'centro': 0,
+      'villa': 0,
+      'san genaro': 0,
+      'mateo pumacahua': 0
     };
 
     if (allCameras) {
       allCameras.forEach(camera => {
-        if (sectors[camera.sector.toUpperCase()] !== undefined) {
-          sectors[camera.sector.toUpperCase()]++;
+        if (sectors[camera.sector] !== undefined) {
+          sectors[camera.sector]++;
         }
       });
     }
@@ -396,10 +396,10 @@ const PanelAdmin = () => {
         <div className="flex items-center space-x-4">
           <select value={filtroSector} onChange={(e) => setFiltroSector(e.target.value)} className="form-input">
             <option value="todos">Todos los sectores</option>
-            <option value="VILLA">VILLA</option>
-            <option value="CENTRO">CENTRO</option>
-            <option value="SAN GENARO">SAN GENARO</option>
-            <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
+            <option value="villa">VILLA</option>
+            <option value="centro">CENTRO</option>
+            <option value="san genaro">SAN GENARO</option>
+            <option value="mateo pumacahua">MATEO PUMACAHUA</option>
           </select>
           <select value={filtroTipoCamara} onChange={(e) => setFiltroTipoCamara(e.target.value)} className="form-input">
             <option value="todos">Todos los tipos</option>
@@ -568,10 +568,10 @@ const PanelAdmin = () => {
               className="form-input"
             >
               <option value="todos">Todos los sectores</option>
-              <option value="VILLA">VILLA</option>
-              <option value="CENTRO">CENTRO</option>
-              <option value="SAN GENARO">SAN GENARO</option>
-              <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
+              <option value="villa">VILLA</option>
+              <option value="centro">CENTRO</option>
+              <option value="san genaro">SAN GENARO</option>
+              <option value="mateo pumacahua">MATEO PUMACAHUA</option>
             </select>
           </div>
 
