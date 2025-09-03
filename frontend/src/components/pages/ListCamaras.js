@@ -9,7 +9,7 @@ export default function ListCamaras() {
   const fetchItems = async (p = 0) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/cameras?limit=${pageSize}&offset=${p * pageSize}`);
+      const res = await fetch(`/api/getCameras?limit=${pageSize}&offset=${p * pageSize}`);
       const data = await res.json();
       setItems(data);
       setPage(p);
@@ -26,7 +26,7 @@ export default function ListCamaras() {
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar registro?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/cameras/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/deleteCamera/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Error eliminando');
       // refresh current page
       await fetchItems(page);
