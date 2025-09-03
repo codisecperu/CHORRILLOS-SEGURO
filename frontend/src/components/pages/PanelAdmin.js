@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { 
   ChartBarIcon, 
   UsersIcon, 
@@ -17,6 +19,7 @@ import RegistroModal from './RegistroModal';
 const PanelAdmin = () => {
   const [tabActiva, setTabActiva] = useState('dashboard');
   const [registros, setRegistros] = useState([]);
+  const [solicitudes, setSolicitudes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedRegistro, setSelectedRegistro] = useState(null);
   const [filtroSector, setFiltroSector] = useState('todos');
@@ -30,7 +33,7 @@ const PanelAdmin = () => {
     fechaHasta: ''
   });
 
-  const [estadisticas] = useState({
+  const [estadisticas, setEstadisticas] = useState({
     totalCamaras: 0,
     totalVigilantes: 0,
     camarasActivas: 0,
@@ -44,41 +47,92 @@ const PanelAdmin = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
 
-    let query = supabase.from('camaras').select('*');
+    // Fetch all cameras and vigilantes for statistics
+    const { data: allCameras, error: allCamerasError } = await supabase.from('camaras').select('id, estado, sector');
+    const { data: allVigilantes, error: allVigilantesError } = await supabase.from('vigilantes').select('id, estado');
 
-    if (filtroSector !== 'todos') {
-      query = query.eq('sector', filtroSector);
+    if (allCamerasError) console.error('Error fetching all cameras:', allCamerasError);
+    if (allVigilantesError) console.error('Error fetching all vigilantes:', allVigilantesError);
+
+    const sectors = {
+      'centro': 0,
+      'villa': 0,
+      'san genaro': 0,
+      'mateo pumacahua': 0
+    };
+
+    if (allCameras) {
+      allCameras.forEach(camera => {
+        if (sectors[camera.sector] !== undefined) {
+          sectors[camera.sector]++;
+        }
+      });
     }
 
-    if (filtroTipoCamara !== 'todos') {
-      query = query.eq('tipo_camara', filtroTipoCamara);
-    }
+    setEstadisticas({
+      totalCamaras: allCameras ? allCameras.length : 0,
+      totalVigilantes: allVigilantes ? allVigilantes.length : 0,
+      camarasActivas: allCameras ? allCameras.filter(c => c.estado === 'aprobado').length : 0,
+      camarasPendientes: allCameras ? allCameras.filter(c => c.estado === 'pendiente').length : 0,
+      incidenciasMes: 0, // Placeholder
+      coberturaSectores: sectors
+    });
 
-    if (filtroEstado !== 'todos') {
-      query = query.eq('estado', filtroEstado);
-    }
+    // Fetch filtered data for the table
+    let camarasQuery = supabase.from('camaras').select('*');
+    if (filtroSector !== 'todos') camarasQuery = camarasQuery.eq('sector', filtroSector);
+    if (filtroTipoCamara !== 'todos') camarasQuery = camarasQuery.eq('tipo_camara', filtroTipoCamara);
+    if (filtroEstado !== 'todos') camarasQuery = camarasQuery.eq('estado', filtroEstado);
+    
+    const { data: cameras, error: camerasError } = await camarasQuery;
 
-    const { data: cameras, error: camerasError } = await query;
+    let vigilantesQuery = supabase.from('vigilantes').select('*');
+    if (filtroSector !== 'todos') vigilantesQuery = vigilantesQuery.eq('sector', filtroSector);
+    if (filtroEstado !== 'todos') vigilantesQuery = vigilantesQuery.eq('estado', filtroEstado);
 
-    // TODO: Fetch pending vigilantes as well
+    const { data: vigilantes, error: vigilantesError } = await vigilantesQuery;
 
-    if (camerasError) {
-      console.error('Error fetching pending cameras:', camerasError);
-    } else {
-      const pendingRegistrations = cameras.map(camera => ({...camera, tipo: 'camara'}));
-      setRegistros(pendingRegistrations);
-    }
+    if (camerasError) console.error('Error fetching filtered cameras:', camerasError);
+    if (vigilantesError) console.error('Error fetching filtered vigilantes:', vigilantesError);
 
+    const pendingCameras = cameras ? cameras.map(camera => ({...camera, tipo: 'camara'})) : [];
+    const pendingVigilantes = vigilantes ? vigilantes.map(vigilante => ({
+      ...vigilante, 
+      tipo: 'vigilante',
+      nombre_propietario: `${vigilante.nombre} ${vigilante.apellidos}`
+    })) : [];
+
+    const allRegistrations = [...pendingCameras, ...pendingVigilantes]
+      .sort((a, b) => new Date(b.fecha_registro) - new Date(a.fecha_registro));
+      
+    setRegistros(allRegistrations);
     setIsLoading(false);
   }, [filtroSector, filtroTipoCamara, filtroEstado]);
 
+  const fetchSolicitudes = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/solicitudesImagenes');
+      if (!response.ok) {
+        throw new Error('Error fetching solicitudes');
+      }
+      const data = await response.json();
+      setSolicitudes(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    if (tabActiva === 'solicitudes') {
+      fetchSolicitudes();
+    }
+  }, [fetchData, tabActiva]);
 
-  const handleApprove = async (id) => {
+  const handleApprove = async (id, tipo) => {
+    const tableName = tipo === 'camara' ? 'camaras' : 'vigilantes';
     const { error } = await supabase
-      .from('camaras')
+      .from(tableName)
       .update({ estado: 'aprobado' })
       .eq('id', id);
 
@@ -89,9 +143,10 @@ const PanelAdmin = () => {
     }
   };
 
-  const handleReject = async (id) => {
+  const handleReject = async (id, tipo) => {
+    const tableName = tipo === 'camara' ? 'camaras' : 'vigilantes';
     const { error } = await supabase
-      .from('camaras')
+      .from(tableName)
       .update({ estado: 'rechazado' })
       .eq('id', id);
 
@@ -140,12 +195,27 @@ const PanelAdmin = () => {
       return;
     }
 
-    let content = '';
-    let mimeType = '';
-    let fileExtension = '';
+    if (format === 'pdf') {
+      const doc = new jsPDF();
+      doc.autoTable({
+        head: [['ID', 'Propietario', 'Tipo', 'Dirección', 'Sector', 'Estado']],
+        body: cameras.map(camera => [
+          camera.id,
+          camera.nombre_propietario,
+          camera.tipo_camara,
+          camera.direccion,
+          camera.sector,
+          camera.estado
+        ]),
+      });
+      doc.save('camaras.pdf');
+    } else {
+      let content = '';
+      let mimeType = '';
+      let fileExtension = '';
 
-    if (format === 'kml') {
-      content = `<?xml version="1.0" encoding="UTF-8"?>
+      if (format === 'kml') {
+        content = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     ${cameras.map(camera => `
@@ -166,29 +236,25 @@ const PanelAdmin = () => {
     `).join('')}
   </Document>
 </kml>`;
-      mimeType = 'application/vnd.google-earth.kml+xml';
-      fileExtension = 'kml';
-    } else if (format === 'excel') {
-      // Basic CSV implementation for Excel
-      const header = Object.keys(cameras[0]).join(',') + '\n';
-      const body = cameras.map(camera => Object.values(camera).join(',')).join('\n');
-      content = header + body;
-      mimeType = 'text/csv';
-      fileExtension = 'csv';
-    } else if (format === 'pdf') {
-      // This is a placeholder for PDF export, as it requires a library like jsPDF
-      content = 'PDF export is not yet implemented.';
-      mimeType = 'text/plain';
-      fileExtension = 'txt';
-    }
+        mimeType = 'application/vnd.google-earth.kml+xml';
+        fileExtension = 'kml';
+      } else if (format === 'excel') {
+        // Basic CSV implementation for Excel
+        const header = Object.keys(cameras[0]).join(',') + '\n';
+        const body = cameras.map(camera => Object.values(camera).join(',')).join('\n');
+        content = header + body;
+        mimeType = 'text/csv';
+        fileExtension = 'csv';
+      }
 
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `camaras.${fileExtension}`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `camaras.${fileExtension}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   const handleSignOut = async () => {
@@ -196,24 +262,29 @@ const PanelAdmin = () => {
     navigate('/login');
   };
 
-  const solicitudesImagenes = [
-    {
-      id: 1,
-      camara: 'Cámara Residencial Av. Defensores 100',
-      propietario: 'Juan Pérez',
-      fechaSolicitud: '2025-01-15',
-      motivo: 'Investigación de robo de vehículo',
-      estado: 'pendiente'
-    },
-    {
-      id: 2,
-      camara: 'Cámara Comercial Jr. Lima 80',
-      propietario: 'Restaurante El Morro',
-      fechaSolicitud: '2025-01-14',
-      motivo: 'Vandalismo en propiedad',
-      estado: 'aprobada'
+  const handleApproveSolicitud = async (id) => {
+    try {
+      await fetch('/.netlify/functions/solicitudesImagenes', {
+        method: 'PUT',
+        body: JSON.stringify({ id, estado: 'aprobada' })
+      });
+      fetchSolicitudes();
+    } catch (error) {
+      console.error(error);
     }
-  ];
+  };
+
+  const handleRejectSolicitud = async (id) => {
+    try {
+      await fetch('/.netlify/functions/solicitudesImagenes', {
+        method: 'PUT',
+        body: JSON.stringify({ id, estado: 'rechazada' })
+      });
+      fetchSolicitudes();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', nombre: 'Dashboard', icono: ChartBarIcon },
@@ -325,10 +396,10 @@ const PanelAdmin = () => {
         <div className="flex items-center space-x-4">
           <select value={filtroSector} onChange={(e) => setFiltroSector(e.target.value)} className="form-input">
             <option value="todos">Todos los sectores</option>
-            <option value="VILLA">VILLA</option>
-            <option value="CENTRO">CENTRO</option>
-            <option value="SAN GENARO">SAN GENARO</option>
-            <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
+            <option value="villa">VILLA</option>
+            <option value="centro">CENTRO</option>
+            <option value="san genaro">SAN GENARO</option>
+            <option value="mateo pumacahua">MATEO PUMACAHUA</option>
           </select>
           <select value={filtroTipoCamara} onChange={(e) => setFiltroTipoCamara(e.target.value)} className="form-input">
             <option value="todos">Todos los tipos</option>
@@ -394,10 +465,10 @@ const PanelAdmin = () => {
                     <button className="text-chorrillos-blue hover:text-chorrillos-dark" onClick={() => handleView(registro)}>
                       <EyeIcon className="h-4 w-4" />
                     </button>
-                    <button className="text-green-600 hover:text-green-900" onClick={() => handleApprove(registro.id)}>
+                    <button className="text-green-600 hover:text-green-900" onClick={() => handleApprove(registro.id, registro.tipo)}>
                       <CheckIcon className="h-4 w-4" />
                     </button>
-                    <button className="text-red-600 hover:text-red-900" onClick={() => handleReject(registro.id)}>
+                    <button className="text-red-600 hover:text-red-900" onClick={() => handleReject(registro.id, registro.tipo)}>
                       <XMarkIcon className="h-4 w-4" />
                     </button>
                   </div>
@@ -421,19 +492,19 @@ const PanelAdmin = () => {
       </div>
 
       <div className="space-y-4">
-        {solicitudesImagenes.map((solicitud) => (
+        {solicitudes.map((solicitud) => (
           <div key={solicitud.id} className="border border-gray-200 rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h4 className="font-medium text-gray-900 mb-2">{solicitud.camara}</h4>
+                <h4 className="font-medium text-gray-900 mb-2">Cámara ID: {solicitud.camara_id}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-500">Propietario:</span>
-                    <p className="font-medium">{solicitud.propietario}</p>
+                    <span className="text-gray-500">Solicitante ID:</span>
+                    <p className="font-medium">{solicitud.solicitante_id}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Fecha de Solicitud:</span>
-                    <p className="font-medium">{solicitud.fechaSolicitud}</p>
+                    <p className="font-medium">{new Date(solicitud.fecha_solicitud).toLocaleDateString()}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Motivo:</span>
@@ -445,17 +516,19 @@ const PanelAdmin = () => {
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${ 
                   solicitud.estado === 'pendiente' 
                     ? 'bg-yellow-100 text-yellow-800' 
-                    : 'bg-green-100 text-green-800'
+                    : solicitud.estado === 'aprobada'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
                 }`}>
                   {solicitud.estado}
                 </span>
               </div>
             </div>
             <div className="mt-4 flex space-x-2">
-              <button className="btn-primary text-sm" onClick={() => console.log('Botón de aprobar solicitud presionado para la solicitud:', solicitud.id)}>
+              <button className="btn-primary text-sm" onClick={() => handleApproveSolicitud(solicitud.id)}>
                 Aprobar Solicitud
               </button>
-              <button className="btn-outline text-sm" onClick={() => console.log('Botón de rechazar solicitud presionado para la solicitud:', solicitud.id)}>
+              <button className="btn-outline text-sm" onClick={() => handleRejectSolicitud(solicitud.id)}>
                 Rechazar
               </button>
               <button className="btn-outline text-sm" onClick={() => console.log('Botón de solicitar más información presionado para la solicitud:', solicitud.id)}>
@@ -495,10 +568,10 @@ const PanelAdmin = () => {
               className="form-input"
             >
               <option value="todos">Todos los sectores</option>
-              <option value="VILLA">VILLA</option>
-              <option value="CENTRO">CENTRO</option>
-              <option value="SAN GENARO">SAN GENARO</option>
-              <option value="MATEO PUMACAHUA">MATEO PUMACAHUA</option>
+              <option value="villa">VILLA</option>
+              <option value="centro">CENTRO</option>
+              <option value="san genaro">SAN GENARO</option>
+              <option value="mateo pumacahua">MATEO PUMACAHUA</option>
             </select>
           </div>
 

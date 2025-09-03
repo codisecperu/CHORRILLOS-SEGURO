@@ -469,12 +469,9 @@ const EmpadronamientoCamaras = () => {
           >
             <option value="">Seleccione el sector</option>
             <option value="centro">Centro</option>
-            <option value="playa">Playa</option>
-            <option value="morro">Morro</option>
-            <option value="pampilla">Pampilla</option>
             <option value="villa">Villa</option>
-            <option value="chavez">Chavez</option>
-            <option value="otros">Otros</option>
+            <option value="mateo pumacahua">Mateo Pumacahua</option>
+            <option value="san genaro">San Genaro</option>
           </select>
           {errors.sector && (
             <p className="text-red-500 text-sm mt-1">{errors.sector}</p>

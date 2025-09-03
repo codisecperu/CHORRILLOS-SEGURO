@@ -38,7 +38,7 @@ export async function handler(event) {
         statusCode: 401,
         headers,
         body: JSON.stringify({ error: 'Token inválido o caducado.', details: userError?.message })
-      };
+      });
     }
 
     // The user is authenticated, proceed with registration

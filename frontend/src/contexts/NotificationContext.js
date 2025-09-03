@@ -132,7 +132,7 @@ export const NotificationProvider = ({ children }) => {
           {
             type: 'vigilante',
             title: 'Nuevo vigilante registrado',
-            message: 'Se ha registrado un nuevo vigilante en el sector Sur',
+            message: 'Se ha registrado un nuevo vigilante en el sector Villa',
             priority: 'low',
             category: 'registration'
           }
