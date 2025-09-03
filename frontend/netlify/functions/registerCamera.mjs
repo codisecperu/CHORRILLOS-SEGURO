@@ -77,27 +77,101 @@ export async function handler(event) {
     };
 
     // Ajustar los nombres de campos y tipos de datos para que coincidan con la base de datos
+    import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Cliente de Supabase con permisos de administrador para escribir en la BD
+const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
+export async function handler(event) {
+  // Permitir la cabecera 'Authorization' que contendrá el token
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers };
+  }
+
+  // 1. Extraer el token de autenticación de las cabeceras
+  const token = event.headers.authorization?.split('Bearer ')?.[1];
+  if (!token) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Autenticación requerida.' })
+    };
+  }
+
+  try {
+    // 2. Verificar el token y obtener los datos del usuario
+    const { data: { user }, error: userError } = await createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } }
+    }).auth.getUser();
+
+    if (userError || !user) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Token inválido o caducado.' })
+      };
+    }
+
+    // Si el usuario es válido, procesamos el registro
+    const formData = JSON.parse(event.body);
+    
     const dbCameraData = {
-      nombre_propietario: String(cameraData.nombrePropietario || ''),
-      tipo_documento: String(cameraData.tipoDocumento || 'DNI'),
-      numero_documento: String(cameraData.numeroDocumento || ''),
-      telefono: String(cameraData.telefono || ''),
-      email: cameraData.email ? String(cameraData.email) : null,
-      tipo_camara: String(cameraData.tipoCamara || 'domiciliaria'),
-      modelo_camara: cameraData.modeloCamara ? String(cameraData.modeloCamara) : null,
-      marca_camara: String(cameraData.marcaCamara || ''),
-      tiene_dvr: Boolean(cameraData.tieneDVR),
-      zona_visibilidad: String(cameraData.zonaVisibilidad || ''),
-      grabacion: Boolean(cameraData.grabacion),
-      disposicion_compartir: Boolean(cameraData.disposicionCompartir),
-      direccion: String(cameraData.direccion || ''),
-      lat: String(cameraData.lat || '0'),
-      lng: String(cameraData.lng || '0'),
-      sector: String(cameraData.sector || 'otros'),
+      nombre_propietario: String(formData.nombrePropietario || ''),
+      tipo_documento: String(formData.tipoDocumento || 'DNI'),
+      numero_documento: String(formData.numeroDocumento || ''),
+      telefono: String(formData.telefono || ''),
+      email: formData.email ? String(formData.email) : null,
+      tipo_camara: String(formData.tipoCamara || 'domiciliaria'),
+      modelo_camara: formData.modeloCamara ? String(formData.modeloCamara) : null,
+      marca_camara: String(formData.marcaCamara || ''),
+      tiene_dvr: Boolean(formData.tieneDVR),
+      zona_visibilidad: String(formData.zonaVisibilidad || ''),
+      grabacion: Boolean(formData.grabacion),
+      disposicion_compartir: Boolean(formData.disposicionCompartir),
+      direccion: String(formData.direccion || ''),
+      lat: String(formData.lat || '0'),
+      lng: String(formData.lng || '0'),
+      sector: String(formData.sector || 'otros'),
       fecha_registro: new Date().toISOString(),
       estado: 'pendiente',
-      imagen_referencial: cameraData.imagenReferencial || null
+      imagen_referencial: formData.imagenReferencial || null,
+      // 3. ¡Aquí está la magia! Añadimos el ID del usuario al registro
+      user_id: user.id
     };
+
+    // 4. Insertamos los datos en la tabla usando el cliente con rol de servicio
+    const { data, error } = await supabaseAdmin
+      .from('camaras')
+      .insert([dbCameraData])
+      .select();
+
+    if (error) throw error;
+
+    return {
+      statusCode: 200,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Cámara registrada exitosamente', data: data[0] })
+    };
+
+  } catch (error) {
+    console.error('Error al registrar cámara:', error);
+    return {
+      statusCode: 500,
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Error interno al registrar la cámara', details: error.message })
+    };
+  }
+}
+
 
     // Insert into Supabase
     const { data, error } = await supabase

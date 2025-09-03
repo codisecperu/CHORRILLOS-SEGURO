@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { MapPinIcon, UserIcon, DevicePhoneMobileIcon, LinkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { extractCoordinatesFromGoogleMaps, isValidGoogleMapsUrl, getAddressFromCoordinates } from '../../utils/coordinateExtractor';
+import { useAuth } from '../../contexts/AuthContext'; // Importar useAuth
 
 const EmpadronamientoCamaras = () => {
+  const { token } = useAuth(); // Obtener token del contexto
   const [formData, setFormData] = useState({
     // Datos del propietario
     nombrePropietario: '',
@@ -163,6 +165,11 @@ const EmpadronamientoCamaras = () => {
     setIsSubmitting(true);
     
     try {
+
+      if (!token) {
+        throw new Error("No estás autenticado. Por favor, inicia sesión de nuevo.");
+      }
+
       // Preparar los datos del formulario
       const requestData = {
         ...formData,
@@ -188,6 +195,7 @@ const EmpadronamientoCamaras = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestData),
       });
